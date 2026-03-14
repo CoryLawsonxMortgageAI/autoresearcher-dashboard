@@ -1,0 +1,22 @@
+# Railway Deployment Configuration for AutoResearcher Dashboard
+# https://railway.app
+
+[build]
+builder = "NIXPACKS"
+
+[build.nixpacks]
+# Use Python 3.11
+python_version = "3.11"
+# Install gcc for any compiled dependencies
+apt_pkgs = ["gcc"]
+
+[deploy]
+startCommand = "python railway_entrypoint.py"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+[deploy.resources]
+cpu = 2
+memory = "4Gi"

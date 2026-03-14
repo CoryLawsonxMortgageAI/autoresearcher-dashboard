@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: autoresearcher-api
+    runtime: python
+    plan: standard
+    region: oregon
+    buildCommand: |
+      pip install -r requirements.txt
+    startCommand: |
+      uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: PORT
+        value: 8000
+      - key: ENVIRONMENT
+        value: production
+      - key: CORS_ORIGINS
+        value: "https://autoresearcher-dashboard.vercel.app,https://*.vercel.app"
+      - key: RUNPOD_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: autoresearcher-db
+          property: connectionString
+    disk:
+      name: autoresearcher-data
+      mountPath: /data
+      sizeGB: 10
+
+  - type: worker
+    name: autoresearcher-gpu-worker
+    runtime: docker
+    plan: pro
+    region: oregon
+    dockerfilePath: ./gpu-worker/Dockerfile
+    envVars:
+      - key: RUNPOD_API_KEY
+        sync: false
+      - key: WEBHOOK_URL
+        fromService:
+          type: web
+          name: autoresearcher-api
+          property: host
+          template: "https://{{host}}/api/webhooks/runpod"
+
+databases:
+  - name: autoresearcher-db
+    plan: starter
+    region: oregon
