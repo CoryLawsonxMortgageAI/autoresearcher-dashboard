@@ -7,6 +7,7 @@ const items = [
   { href: "/opportunities", label: "opportunities" },
   { href: "/merges", label: "merges" },
   { href: "/evals", label: "evals" },
+  { href: "/learn", label: "learn" },
 ] as const;
 
 export const Nav = (): React.JSX.Element => {

@@ -17,7 +17,8 @@ export const MODEL_SONNET = "claude-sonnet-4-6";
 export const MODEL_HAIKU = "claude-haiku-4-5-20251001";
 
 // Karpathy-style: one entry point, one shape, no orchestration ceremony.
-// Prompt caching is on by default for the system prompt (it's stable across calls).
+// Prompt caching is enabled via the prompt-caching beta header so the system
+// prompt is reused across SCOUT/CRITIC calls in the same window.
 export const callClaude = async (args: {
   model: string;
   system: string;
@@ -25,7 +26,7 @@ export const callClaude = async (args: {
   maxTokens?: number;
 }): Promise<{ text: string; inputTokens: number; outputTokens: number }> => {
   const client = getClient();
-  const resp = await client.messages.create({
+  const resp = await client.beta.promptCaching.messages.create({
     model: args.model,
     max_tokens: args.maxTokens ?? 4096,
     system: [

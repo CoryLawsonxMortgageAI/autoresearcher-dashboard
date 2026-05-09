@@ -2,4 +2,5 @@
 import "./scout-nightly.js";
 import "./digest-weekly.js";
 import "./inflight-status.js";
+import "./distill-weekly.js";
 console.log("[cron] all schedulers booted");

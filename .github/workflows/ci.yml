@@ -2,9 +2,10 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
-    branches: [main, "feat/**", "claude/**"]
+    branches: [main, master, "feat/**", "claude/**"]
+  workflow_dispatch: {}
 
 jobs:
   cascade:
@@ -29,5 +30,25 @@ jobs:
       - run: pnpm -r --filter @autoresearcher/evals run a
       - run: pnpm -r --filter @autoresearcher/evals run b
       - run: pnpm -r --filter @autoresearcher/evals run c
+      - name: Tier D — coding bench (static; verifies harness)
+        run: pnpm bench
       - run: pnpm -r test --if-present
       - run: pnpm -r build --if-present
+
+  # Optional, gated, costs money. Run on demand or weekly. Compares the agent's
+  # actual coding output against the same fixtures the static bench uses.
+  bench-live:
+    if: github.event_name == 'workflow_dispatch'
+    needs: cascade
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.12.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm bench:live
