@@ -8,6 +8,7 @@ const items = [
   { href: "/merges", label: "merges" },
   { href: "/evals", label: "evals" },
   { href: "/learn", label: "learn" },
+  { href: "/chat", label: "chat" },
 ] as const;
 
 export const Nav = (): React.JSX.Element => {

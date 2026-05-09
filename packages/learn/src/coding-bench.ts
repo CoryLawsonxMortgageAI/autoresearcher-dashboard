@@ -11,8 +11,10 @@
 //                       tests. Verifies the bench harness works in CI without
 //                       calling Claude. PASS means the framework is sound.
 //   --live:             call Claude with the spec, write the response to
-//                       solution.ts, run tests. Score = pass-rate. This is
-//                       the actual coding-ability benchmark.
+//                       solution.ts, run tests. On failure, retry up to
+//                       BENCH_MAX_ATTEMPTS times, passing the test failure
+//                       output back as feedback (Self-Refine / Self-Debug).
+//                       Score = pass-rate.
 //
 // We do not lower the static threshold to "skip on CI" — if static fails,
 // the harness itself is broken and we want CI to scream.
@@ -30,14 +32,32 @@ export type BenchResult = {
   passed: boolean;
   detail: string;
   durationMs: number;
+  attempts: number;
 };
 
 export type BenchMode = "static" | "live";
+
+const MAX_ATTEMPTS = (() => {
+  const n = Number(process.env.BENCH_MAX_ATTEMPTS ?? 3);
+  if (!Number.isFinite(n) || n < 1) return 3;
+  return Math.min(5, Math.max(1, Math.floor(n)));
+})();
 
 const listProblems = (): string[] =>
   readdirSync(BENCH_ROOT)
     .filter((f) => statSync(join(BENCH_ROOT, f)).isDirectory())
     .sort();
+
+const runTests = (dir: string): { ok: true } | { ok: false; output: string } => {
+  try {
+    execSync(`pnpm dlx tsx ${join(dir, "tests.ts")}`, { stdio: "pipe" });
+    return { ok: true };
+  } catch (err) {
+    const e = err as { stdout?: Buffer; stderr?: Buffer; message?: string };
+    const out = `${e.stdout?.toString() ?? ""}\n${e.stderr?.toString() ?? ""}`.trim();
+    return { ok: false, output: out || (e.message ?? "tests failed") };
+  }
+};
 
 const runOneProblem = async (problemId: string, mode: BenchMode): Promise<BenchResult> => {
   const dir = join(BENCH_ROOT, problemId);
@@ -46,40 +66,59 @@ const runOneProblem = async (problemId: string, mode: BenchMode): Promise<BenchR
   if (mode === "static") {
     const ref = readFileSync(join(dir, "reference-solution.ts"), "utf8");
     writeFileSync(join(dir, "solution.ts"), ref);
-  } else {
-    // Live mode: dynamic import to avoid pulling Anthropic SDK into the static
-    // bench's runtime. Operator runs `pnpm bench:live` after exporting
-    // ANTHROPIC_API_KEY.
-    const spec = readFileSync(join(dir, "spec.md"), "utf8");
-    const code = await synthesizeWithClaude(spec);
-    writeFileSync(join(dir, "solution.ts"), code);
+    const r = runTests(dir);
+    if (r.ok) return { id: problemId, passed: true, detail: "tests passed", durationMs: Date.now() - t0, attempts: 1 };
+    return { id: problemId, passed: false, detail: r.output.slice(0, 500), durationMs: Date.now() - t0, attempts: 1 };
   }
 
-  try {
-    // Run the tests.ts file with tsx; it imports ./solution.ts and asserts.
-    execSync(`pnpm dlx tsx ${join(dir, "tests.ts")}`, { stdio: "pipe" });
-    return { id: problemId, passed: true, detail: "tests passed", durationMs: Date.now() - t0 };
-  } catch (err) {
-    const detail = err instanceof Error ? err.message.slice(0, 500) : String(err);
-    return { id: problemId, passed: false, detail, durationMs: Date.now() - t0 };
+  // Live mode: Self-Debug retry loop. Up to MAX_ATTEMPTS tries; each failed
+  // attempt feeds the test output back to the model. References:
+  //   - Self-Refine (Madaan et al., 2023): iterative refinement with feedback
+  //   - SWE-agent (Yang et al., 2024): test failure as the steering signal
+  const spec = readFileSync(join(dir, "spec.md"), "utf8");
+  let lastOutput: string | null = null;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const code = await synthesizeWithClaude({ spec, lastFailure: lastOutput, attempt, ofN: MAX_ATTEMPTS });
+    writeFileSync(join(dir, "solution.ts"), code);
+    const r = runTests(dir);
+    if (r.ok) {
+      return { id: problemId, passed: true, detail: `tests passed on attempt ${attempt}`, durationMs: Date.now() - t0, attempts: attempt };
+    }
+    lastOutput = r.output;
   }
+  return {
+    id: problemId,
+    passed: false,
+    detail: (lastOutput ?? "tests failed").slice(0, 500),
+    durationMs: Date.now() - t0,
+    attempts: MAX_ATTEMPTS,
+  };
 };
 
-const synthesizeWithClaude = async (spec: string): Promise<string> => {
+const synthesizeWithClaude = async (args: {
+  spec: string;
+  lastFailure: string | null;
+  attempt: number;
+  ofN: number;
+}): Promise<string> => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY required for --live mode");
-  // Minimal call; we don't depend on services/api here so packages/learn
-  // stays runnable from CI without the full server graph.
   const sdk = await import("@anthropic-ai/sdk");
   const Anthropic = sdk.default;
   const client = new Anthropic({ apiKey });
+
+  const userContent = args.lastFailure
+    ? `${args.spec}\n\n---\nPrevious attempt (${args.attempt - 1}/${args.ofN}) failed with:\n\`\`\`\n${args.lastFailure.slice(-2000)}\n\`\`\`\nProduce a corrected solution.ts. Do not repeat the failing approach.`
+    : args.spec;
+
   const resp = await client.messages.create({
     model: "claude-opus-4-7",
     max_tokens: 2048,
     system:
       "You write TypeScript. Given a problem spec, return ONLY the contents of solution.ts. " +
-      "No prose, no fences. Export a function named `solve`. Strict mode, no `any`.",
-    messages: [{ role: "user", content: spec }],
+      "No prose, no fences. Export a function named `solve`. Strict mode, no `any`. " +
+      "If a previous attempt is shown with its failure, reason about why it failed before writing the new solution.",
+    messages: [{ role: "user", content: userContent }],
   });
   type TextBlock = { type: "text"; text: string };
   const isTextBlock = (b: { type: string }): b is TextBlock => b.type === "text";
@@ -113,7 +152,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const r = await runBench(mode);
   console.log(`bench (${mode}) ${r.passed ? "PASS" : "FAIL"} passRate=${r.passRate.toFixed(2)} (${r.results.filter((x) => x.passed).length}/${r.results.length})`);
   for (const res of r.results) {
-    console.log(`  ${res.passed ? "✓" : "✗"} ${res.id} (${res.durationMs}ms)${res.passed ? "" : ` :: ${res.detail.split("\n")[0]}`}`);
+    const tag = `${res.passed ? "✓" : "✗"} ${res.id}`;
+    const stats = `(${res.durationMs}ms, attempts=${res.attempts})`;
+    const detail = res.passed ? "" : ` :: ${res.detail.split("\n")[0]}`;
+    console.log(`  ${tag} ${stats}${detail}`);
   }
   process.exit(r.passed ? 0 : 1);
 }

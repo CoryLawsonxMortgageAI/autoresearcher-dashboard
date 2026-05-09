@@ -11,6 +11,7 @@ import { magicRouter } from "./routes/magic.js";
 import { scoutRouter } from "./routes/scout.js";
 import { evalsRouter } from "./routes/evals.js";
 import { learnRouter } from "./routes/learn.js";
+import { chatRouter } from "./routes/chat.js";
 
 initSentry();
 void initOtel();
@@ -44,6 +45,7 @@ app.route("/api/magic", magicRouter);
 app.route("/api/scout", scoutRouter);
 app.route("/api/evals", evalsRouter);
 app.route("/api/learn", learnRouter);
+app.route("/api/chat", chatRouter);
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const { serve } = await import("@hono/node-server");
