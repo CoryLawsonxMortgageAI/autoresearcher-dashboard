@@ -1,0 +1,33 @@
+{
+  "name": "@autoresearcher/db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./schema/index.ts"
+  },
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "push": "drizzle-kit push",
+    "studio": "drizzle-kit studio",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'db has no lint step yet'",
+    "test": "vitest run",
+    "build": "echo 'db is source-only'"
+  },
+  "devDependencies": {
+    "@autoresearcher/tsconfig": "workspace:*",
+    "@types/node": "^20.14.0",
+    "drizzle-kit": "^0.24.2",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "@planetscale/database": "^1.19.0",
+    "drizzle-orm": "^0.33.0"
+  }
+}
