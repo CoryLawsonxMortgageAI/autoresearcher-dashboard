@@ -39,6 +39,11 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 
+# Coding bench: solution.ts is generated per-run by `pnpm bench` (copied from
+# reference-solution.ts in static mode, written by Claude in --live mode).
+# Reference solutions stay tracked.
+packages/learn/fixtures/coding-bench/*/solution.ts
+
 # Python (legacy GPU dashboard)
 __pycache__/
 *.py[cod]

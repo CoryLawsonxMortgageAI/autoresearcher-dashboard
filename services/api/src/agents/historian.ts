@@ -3,7 +3,7 @@
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { getDb, runs as runsTable, opportunities as oppTable, blockers as blockersTable } from "@autoresearcher/db";
-import { eq, sql, desc } from "drizzle-orm";
+import { sql, desc } from "drizzle-orm";
 import { callClaude, costCents, MODEL_SONNET } from "../lib/llm.js";
 import { HISTORIAN_SYSTEM } from "@autoresearcher/skill";
 import { startRun, finishRun } from "../lib/run-tracker.js";
@@ -14,12 +14,10 @@ export const writePhaseDoc = async (phase: string): Promise<{ path: string }> =>
   let cost = 0n; let inT = 0n; let outT = 0n;
   try {
     const db = getDb();
-    const phaseRuns = await db.query.runs.findMany({
-      where: eq(runsTable.phase, phase as Parameters<typeof eq>[1] extends infer _ ? string : never as never),
-    }).catch(async () => {
-      // Fallback for non-enum phases
-      return db.select().from(runsTable).where(sql`${runsTable.phase} = ${phase}`);
-    });
+    const phaseRuns = await db
+      .select()
+      .from(runsTable)
+      .where(sql`${runsTable.phase} = ${phase}`);
     const opps = await db.select().from(oppTable).orderBy(desc(oppTable.scoreTotal)).limit(10);
     const opens = await db.select().from(blockersTable).where(sql`${blockersTable.resolvedAt} IS NULL`);
 

@@ -13,6 +13,7 @@ import {
   SCOUT_SYSTEM,
   verticalContext,
 } from "@autoresearcher/skill";
+import { loadLatestBank, renderFewShot } from "@autoresearcher/learn";
 import { getDb, opportunities as oppTable } from "@autoresearcher/db";
 import { callClaude, costCents, MODEL_OPUS } from "../lib/llm.js";
 import { startRun, finishRun } from "../lib/run-tracker.js";
@@ -64,6 +65,12 @@ export const runScout = async (args: { phase: "scout-nightly" | "ad-hoc" } = { p
   try {
     await publishEvent("activity", { type: "scout_started", runId, at: new Date().toISOString() }, runId);
 
+    // Load the latest distilled feedback bank. In-context learning, not training:
+    // operator decisions from the last cycle steer the next batch as few-shot
+    // examples in the user JSON. The system prompt stays stable for caching.
+    const bank = safeLoadBank();
+    const fewShot = bank ? renderFewShot(bank, 6) : "";
+
     const verticals = loadVerticals().verticals;
     for (const v of verticals) {
       const userJson = {
@@ -71,6 +78,8 @@ export const runScout = async (args: { phase: "scout-nightly" | "ad-hoc" } = { p
         vertical: { slug: v.slug, name: v.name, description: v.description, queries: v.queries, exclusions: v.exclusions ?? [] },
         outputShape: ScoutFinding._def.typeName,
         context: verticalContext(v),
+        feedback: fewShot || "(none yet — first cycle)",
+        feedbackVersion: bank?.version ?? "v0-bootstrap",
       };
       const { text, inputTokens, outputTokens } = await callClaude({
         model: MODEL_OPUS,
@@ -154,3 +163,7 @@ const parseScoutOutput = (text: string): { findings: ScoutFinding[] } | null => 
 
 const stripFences = (s: string): string =>
   s.replace(/^\s*```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+
+const safeLoadBank = (): ReturnType<typeof loadLatestBank> | null => {
+  try { return loadLatestBank(); } catch { return null; }
+};

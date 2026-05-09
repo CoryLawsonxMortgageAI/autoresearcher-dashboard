@@ -18,7 +18,10 @@ mergesRouter.get("/", async (c) => {
 });
 
 mergesRouter.get("/:prNumber", async (c) => {
-  const pr = Number(c.req.param("prNumber"));
+  const prRaw = c.req.param("prNumber");
+  if (!prRaw) return c.json({ error: "prNumber required" }, 400);
+  const pr = Number(prRaw);
+  if (!Number.isFinite(pr)) return c.json({ error: "prNumber must be a number" }, 400);
   const row = await getDb().query.merges.findFirst({ where: eq(mergesTable.prNumber, pr) });
   if (!row) return c.json({ error: "not found" }, 404);
   return c.json(row);
@@ -26,7 +29,10 @@ mergesRouter.get("/:prNumber", async (c) => {
 
 // One-tap merge: requires operator JWT. Tier-3 path is gated by AUTOMERGE_AUTHORIZED.
 mergesRouter.post("/:prNumber/tap", requireOperator, async (c) => {
-  const pr = Number(c.req.param("prNumber"));
+  const prRaw = c.req.param("prNumber");
+  if (!prRaw) return c.json({ error: "prNumber required" }, 400);
+  const pr = Number(prRaw);
+  if (!Number.isFinite(pr)) return c.json({ error: "prNumber must be a number" }, 400);
   const db = getDb();
   const row = await db.query.merges.findFirst({ where: eq(mergesTable.prNumber, pr) });
   if (!row) return c.json({ error: "not found" }, 404);
@@ -58,7 +64,10 @@ mergesRouter.post("/:prNumber/tap", requireOperator, async (c) => {
 // Mandatory revert path (per directive): revert + down-migration + Vercel rollback.
 // Implemented as a single API call that the dashboard surfaces as "[Revert]".
 mergesRouter.post("/:prNumber/revert", requireOperator, async (c) => {
-  const pr = Number(c.req.param("prNumber"));
+  const prRaw = c.req.param("prNumber");
+  if (!prRaw) return c.json({ error: "prNumber required" }, 400);
+  const pr = Number(prRaw);
+  if (!Number.isFinite(pr)) return c.json({ error: "prNumber must be a number" }, 400);
   const db = getDb();
   const row = await db.query.merges.findFirst({ where: eq(mergesTable.prNumber, pr) });
   if (!row) return c.json({ error: "not found" }, 404);

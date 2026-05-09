@@ -1,0 +1,35 @@
+{
+  "name": "@autoresearcher/learn",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./bank": "./src/prompt-bank.ts"
+  },
+  "scripts": {
+    "bench": "tsx src/coding-bench.ts",
+    "bench:live": "tsx src/coding-bench.ts --live",
+    "distill": "tsx src/distill.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'learn has no lint step yet'",
+    "test": "vitest run",
+    "build": "echo 'learn is source-only'"
+  },
+  "devDependencies": {
+    "@autoresearcher/tsconfig": "workspace:*",
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@autoresearcher/db": "workspace:*",
+    "@autoresearcher/shared": "workspace:*",
+    "drizzle-orm": "^0.33.0",
+    "zod": "^3.23.8"
+  }
+}
