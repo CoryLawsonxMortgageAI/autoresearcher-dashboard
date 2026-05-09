@@ -1,0 +1,15 @@
+{
+  "id": "tier-b/scoring-deterministic",
+  "tier": "B",
+  "kind": "scoring-determinism",
+  "input": {
+    "evidenceCount": 3,
+    "domainAuthorityAvg": 70,
+    "hasNamedBuyer": true,
+    "marketHints": { "ttlMillions": 500, "growth": 8 },
+    "competitiveCount": 2,
+    "founderEdgeNotes": ["worked at lender", "ex-LO"]
+  },
+  "expect": { "totalMin": 30, "totalMax": 45 },
+  "description": "A solid named-buyer mortgage opp scores 30-45."
+}

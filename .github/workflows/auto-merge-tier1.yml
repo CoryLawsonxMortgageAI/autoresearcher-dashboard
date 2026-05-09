@@ -1,0 +1,64 @@
+name: auto-merge-tier1
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, labeled]
+
+# Tier-1 auto-merge eligible:
+#   - paths under /docs/**, root *.md, /packages/evals/** (additive only)
+#   - cascade green, CRITIC approve, no schema changes, no package.json changes,
+#     no .env* changes, no workflow/CI changes
+#   - AUTOMERGE_AUTHORIZED env true (set only after Cory commits a signed
+#     /.automerge-authorized and 24h has elapsed)
+#   - rate ceiling: 5/hour, 20/day (enforced server-side; this job just refuses
+#     to run more than one merge per workflow trigger)
+#
+# THIS WORKFLOW IS DISABLED BY DEFAULT. It is enabled only when the operator
+# sets the repo variable AUTOMERGE_AUTHORIZED=true after their pre-commitment
+# device is in place.
+jobs:
+  guard:
+    if: vars.AUTOMERGE_AUTHORIZED == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 2 }
+      - name: Compute changed files
+        id: diff
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          echo "$changed"
+          echo "changed<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$changed" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+      - name: Refuse if outside Tier-1 paths or touches forbidden files
+        run: |
+          set -e
+          violations=$(echo "${{ steps.diff.outputs.changed }}" | grep -E -v '^(docs/|[^/]+\.md$|packages/evals/)' || true)
+          if [ -n "$violations" ]; then
+            echo "Tier-1 auto-merge refused; out-of-tier paths:"
+            echo "$violations"
+            exit 1
+          fi
+          forbidden=$(echo "${{ steps.diff.outputs.changed }}" | grep -E '(package\.json$|\.env|\.github/workflows/|^auth/|^legal/|migrations/.*\.(down|destructive)\.)' || true)
+          if [ -n "$forbidden" ]; then
+            echo "Tier-1 auto-merge refused; forbidden paths:"
+            echo "$forbidden"
+            exit 1
+          fi
+      - name: Wait for cascade
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: cascade
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 15
+      - name: Merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} --squash --delete-branch

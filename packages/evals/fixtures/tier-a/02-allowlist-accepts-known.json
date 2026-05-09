@@ -1,0 +1,8 @@
+{
+  "id": "tier-a/allowlist-accepts-known",
+  "tier": "A",
+  "kind": "allowlist-rejection",
+  "input": { "slug": "mortgage-origination-internal" },
+  "expect": { "rejected": false },
+  "description": "SCOUT must accept verticals listed in verticals.json."
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "../../shared/src/verticals.schema.json",
+  "version": "1.0.0",
+  "updated": "2026-05-09",
+  "verticals": [
+    {
+      "slug": "mortgage-origination-internal",
+      "name": "Mortgage origination internal tooling",
+      "description": "LOS-adjacent tooling for retail/wholesale lenders: pipeline mgmt, doc collection, condition tracking.",
+      "queries": [
+        "mortgage loan officer pipeline software pain",
+        "TPO portal frustrations",
+        "encompass alternative",
+        "1003 automation"
+      ],
+      "exclusions": ["consumer-facing rate shopping", "unlicensed loan brokers"]
+    },
+    {
+      "slug": "lo-processor-productivity",
+      "name": "Loan officer / processor productivity SaaS",
+      "description": "Tools that compress LO/processor cycle time without touching the LOS of record.",
+      "queries": ["loan officer CRM", "processor checklist software", "borrower follow-up automation"]
+    },
+    {
+      "slug": "compliance-ops-licensed-financial",
+      "name": "Compliance ops for licensed financial originators",
+      "description": "NMLS / state license tracking, CE management, audit prep for MLOs and brokerages.",
+      "queries": ["NMLS compliance software", "state mortgage exam prep", "license renewal tracking"]
+    },
+    {
+      "slug": "b2b-compliance-audit",
+      "name": "B2B compliance / audit tooling",
+      "description": "SOC 2, ISO 27001, HIPAA, PCI evidence collection for B2B SaaS. Excludes consumer privacy tools.",
+      "queries": ["SOC 2 evidence automation", "audit prep SMB", "compliance copilot"]
+    },
+    {
+      "slug": "developer-tools",
+      "name": "Developer tools (CLI, observability, testing infra)",
+      "description": "Dev-facing infra: CLIs, tracing/log/metrics, test infra, build systems, code search.",
+      "queries": ["developer CLI productivity", "observability for small teams", "flaky test detection"]
+    },
+    {
+      "slug": "internal-tool-builders-smb",
+      "name": "Internal-tool builders for SMB",
+      "description": "Retool/Appsmith-class tools positioned at <$10M ARR ops teams.",
+      "queries": ["SMB internal tools", "Retool alternative for ops", "no-code admin panel"]
+    },
+    {
+      "slug": "ai-native-vertical-saas",
+      "name": "AI-native vertical SaaS (legal ops, accounting ops, HR ops)",
+      "description": "Vertical-specific SaaS where the LLM is core, not a feature. Excludes general chatbot wrappers.",
+      "queries": ["AI legal ops", "AI accounting close", "AI HR onboarding copilot"]
+    },
+    {
+      "slug": "real-estate-brokerage-ops",
+      "name": "Real estate brokerage operations tooling",
+      "description": "Back-office for residential brokerages: transaction coordination, commission ops, CDA automation.",
+      "queries": ["brokerage transaction coordinator software", "real estate commission disbursement"]
+    },
+    {
+      "slug": "investigative-osint",
+      "name": "Investigative / OSINT research tooling",
+      "description": "Lawful research tools: investigative journalism, due diligence, AML/KYC research surfaces.",
+      "queries": ["OSINT research platform", "due diligence automation", "investigative journalism tools"],
+      "exclusions": ["doxxing", "stalkerware", "unlicensed surveillance"]
+    }
+  ],
+  "policies": {
+    "rejectIfOutsideAllowlist": true,
+    "addProcedure": "Edit verticals.json -> CRITIC review -> ADR -> PR. Out-of-allowlist verticals rejected at SCOUT tool layer."
+  }
+}

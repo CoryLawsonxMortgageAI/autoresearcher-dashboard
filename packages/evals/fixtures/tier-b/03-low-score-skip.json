@@ -1,0 +1,12 @@
+{
+  "id": "tier-b/recommendation-skip",
+  "tier": "B",
+  "kind": "critic-verdict",
+  "input": {
+    "score": {
+      "fit": 2, "evidenceQuality": 2, "marketSize": 2, "competitiveDensity": 3, "founderEdge": 4, "total": 13
+    }
+  },
+  "expect": { "action": "skip" },
+  "description": "Total < 14 should recommend skip."
+}

@@ -1,0 +1,43 @@
+{
+  "name": "@autoresearcher/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/server.ts",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "build": "tsc -p tsconfig.json && cp -r src/templates dist/ 2>/dev/null || true",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'api has no lint step yet'",
+    "test": "vitest run",
+    "scout:once": "tsx src/cron/scout-nightly.ts --once",
+    "digest:dry": "tsx src/cron/digest-weekly.ts --dry",
+    "cron:bootstrap": "tsx src/cron/bootstrap.ts"
+  },
+  "devDependencies": {
+    "@autoresearcher/tsconfig": "workspace:*",
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  },
+  "dependencies": {
+    "@autoresearcher/db": "workspace:*",
+    "@autoresearcher/shared": "workspace:*",
+    "@autoresearcher/skill": "workspace:*",
+    "@anthropic-ai/sdk": "^0.27.0",
+    "@hono/node-server": "^1.13.0",
+    "@hono/zod-validator": "^0.4.0",
+    "@sentry/node": "^8.30.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.53.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.50.0",
+    "hono": "^4.6.0",
+    "pusher": "^5.2.0",
+    "resend": "^4.0.0",
+    "jose": "^5.9.0",
+    "node-cron": "^3.0.3",
+    "zod": "^3.23.8"
+  }
+}

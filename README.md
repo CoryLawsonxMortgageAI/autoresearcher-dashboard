@@ -1,226 +1,122 @@
-# AutoResearcher Dashboard
+# autoresearcher
 
-A modern, Palantir-inspired web UI for monitoring and controlling autonomous AI research agents on Windows.
+Autopilot research agent + operator dashboard.
 
-![Dashboard Preview](https://img.shields.io/badge/Status-Active-success)
-![Platform](https://img.shields.io/badge/Platform-Windows-blue)
-![GPU](https://img.shields.io/badge/GPU-NVIDIA-green)
+> The dashboard is the operator's primary observability surface. If
+> something is happening server-side that doesn't appear here, that's a bug.
 
-## Features
+Karpathy-minimal in spirit. nanoGPT-aesthetic. One concept per file when
+the concept is small. No `any`. No floats for money. Prompts in source.
 
-- **Real-time GPU Monitoring**: Track utilization, memory usage, temperature, and power consumption
-- **Experiment Control**: Start, stop, and monitor training experiments
-- **Live Metrics**: WebSocket-based real-time updates
-- **Results Visualization**: Interactive charts showing training progress
-- **Agent Status**: Monitor autonomous research agents
-- **Log Streaming**: Real-time training logs with filtering
-- **Palantir-inspired UI**: Dark theme with cyan accents, data-dense layouts
-
-## Architecture
+## Layout
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    AutoResearcher Dashboard                  │
-├─────────────────────────────────────────────────────────────┤
-│  Frontend (React + TypeScript + Tailwind)                   │
-│  ├── Real-time WebSocket updates                            │
-│  ├── Interactive charts (Recharts)                          │
-│  ├── Palantir-style dark theme                              │
-│  └── Responsive layout                                      │
-├─────────────────────────────────────────────────────────────┤
-│  Backend (FastAPI + Python)                                 │
-│  ├── GPU monitoring (NVML)                                  │
-│  ├── Experiment management                                  │
-│  ├── WebSocket broadcasting                                 │
-│  └── Results tracking                                       │
-├─────────────────────────────────────────────────────────────┤
-│  Core Training (autoresearch-win-rtx)                       │
-│  ├── GPT model training                                     │
-│  ├── Muon optimizer                                         │
-│  └── Autonomous experimentation                             │
-└─────────────────────────────────────────────────────────────┘
+apps/web/              Next.js 14 dashboard (dark, monospace, terminal-aesthetic)
+services/api/          Hono API + SCOUT/CRITIC/HISTORIAN agents + cron
+services/worker/       Dockerfile + fly.toml for the cron worker
+packages/shared/       Zod-validated types, bigint-cents Money
+packages/db/           Drizzle MySQL schema (PlanetScale-compatible)
+packages/skills/       Vertical allowlist + deterministic scorer + prompts
+packages/evals/        Tier A/B/C runner + checked-in fixtures
+packages/tsconfig/     Shared TS base config
+scripts/               bootstrap.sh, sync-secrets.ts, seed-fixtures.ts, hooks/
+docs/adr/              Architecture decisions
+docs/runs/             HISTORIAN write-ups + _inflight.md
+.claude/hooks.json     PreToolUse / PostToolUse policy gates
+.github/workflows/     ci, deploy, revert, auto-merge-tier1 (gated off by default)
+backend/               LEGACY: GPU monitoring FastAPI (see ADR 0008)
 ```
 
-## Requirements
-
-- Windows 10/11
-- NVIDIA GPU (RTX 2060+ with 8GB+ VRAM)
-- Python 3.10+
-- Node.js 18+
-- Git
-
-## Quick Start
-
-### 1. Setup Backend
-
-```powershell
-# Navigate to backend directory
-cd autoresearcher-dashboard\backend
-
-# Create virtual environment (optional but recommended)
-python -m venv venv
-.\venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. Setup Frontend
-
-```powershell
-# Navigate to frontend directory
-cd autoresearcher-dashboard\frontend
-
-# Install dependencies (requires Node.js 18+)
-npm install
-
-# Build for production
-npm run build
-```
-
-### 3. Launch
-
-```powershell
-# Run the launch script
-.\launch.ps1
-```
-
-Or manually:
-
-```powershell
-# Terminal 1: Start backend
-cd autoresearcher-dashboard\backend
-python main.py
-
-# Terminal 2: Start frontend (development)
-cd autoresearcher-dashboard\frontend
-npm run dev
-
-# Or serve the built frontend (production)
-# Backend automatically serves frontend from ../backend/app/frontend_dist
-```
-
-## Usage
-
-1. Open your browser to `http://localhost:5173` (dev) or `http://localhost:8000` (prod)
-2. The dashboard will automatically connect via WebSocket
-3. Monitor GPU metrics in real-time
-4. Start experiments from the dashboard
-5. View results and training progress
-
-## Configuration
-
-### Backend Environment Variables
+## Quick start
 
 ```bash
-# Optional: Override autoresearch project path
-AUTORESEARCH_PATH=C:\path\to\autoresearch-win-rtx
-
-# Optional: API port (default: 8000)
-PORT=8000
+pnpm install
+cp .env.example .env  # fill in secrets, or `pnpm sync-secrets` from Vercel
+pnpm bootstrap        # install + migrate + seed + dev + open browser
 ```
 
-### Frontend Configuration
+The dashboard is at `http://localhost:3000/activity`. The API is at
+`http://localhost:3001`.
 
-The frontend connects to the backend automatically. To change the API URL:
+## Production
 
-```typescript
-// src/hooks/useAPI.ts
-const API_BASE = 'http://your-backend:8000/api';
+- **apps/web** + **services/api**: Vercel (`vercel.json`).
+- **worker**: Fly.io or Railway via `services/worker/Dockerfile`.
+- **db**: PlanetScale (MySQL/Vitess) via `DATABASE_URL`.
+- **events**: Pusher Channels (with DB-durable fallback in `events` table).
+- **email**: Resend (weekly digest, signed magic-link greenlight buttons).
+- **observability**: Sentry + OpenTelemetry.
+- **secrets**: Vercel env, pulled to worker via `scripts/sync-secrets.ts`.
 
-// src/hooks/useWebSocket.ts  
-const WS_URL = 'ws://your-backend:8000/ws';
-```
+See `docs/runs/phase-6.md` for the env vars the operator must set.
 
-## API Endpoints
+## How the autopilot runs
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/health` | Health check |
-| GET | `/api/gpu/metrics` | Current GPU metrics |
-| GET | `/api/system/metrics` | System metrics |
-| GET | `/api/experiments` | List all experiments |
-| GET | `/api/experiments/current` | Current experiment |
-| POST | `/api/experiments/start` | Start new experiment |
-| POST | `/api/experiments/stop` | Stop current experiment |
-| GET | `/api/results` | Get results from TSV |
-| GET | `/api/agents` | Get agent status |
-| GET | `/api/logs` | Get recent logs |
-| WS | `/ws` | WebSocket for real-time updates |
+1. **Nightly SCOUT** (cron `0 3 * * *`) walks the vertical allowlist in
+   `packages/skills/autoresearcher/verticals.json`, calls Claude Opus per
+   vertical, validates the JSON output, scores deterministically, and
+   inserts into `opportunities`. Each insert publishes
+   `opportunity_added` on the `opportunities` Pusher channel.
+2. **Live dashboard toast**: any browser open to `apps/web` sees a toast
+   pop in real time via `<PusherToast />`.
+3. **Weekly digest** (cron `0 9 * * MON`) takes the top 10 new opps,
+   issues per-opportunity signed-magic-link greenlight + skip URLs,
+   renders an email in the same monospace dark idiom, sends via Resend.
+4. **One-tap merge** (Tier-2): operator reviews on `/merges`, taps; the
+   `merged_by_user_id` audit column records *their* sub from the
+   verified JWT.
+5. **Mandatory revert** (24h after merge): one button, one workflow:
+   `git revert -m 1` + down migration + Vercel rollback.
 
-## Project Structure
+## Notion + Obsidian
 
-```
-autoresearcher-dashboard/
-├── backend/
-│   ├── app/
-│   │   └── frontend_dist/     # Built frontend files
-│   ├── main.py                # FastAPI application
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── components/        # React components
-│   │   ├── hooks/            # Custom hooks
-│   │   ├── store/            # Zustand store
-│   │   ├── types/            # TypeScript types
-│   │   ├── utils/            # Utilities
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── package.json
-│   ├── tailwind.config.js
-│   └── vite.config.ts
-└── launch.ps1                 # Launch script
-```
+On greenlight, the opportunity is mirrored to:
+- A Notion database (`NOTION_OPPORTUNITIES_DB`) — one page per opportunity
+  with title, vertical, score, recommendation, evidence, critic notes.
+- An Obsidian vault (`OBSIDIAN_VAULT_PATH`) — one markdown file per
+  opportunity with YAML frontmatter Obsidian recognises.
 
-## Development
+Both are downstream mirrors. The MySQL `opportunities` table is the
+source of truth. See `docs/adr/0007-integrations-notion-obsidian.md`.
 
-### Frontend Development
+## Directive compliance
 
-```powershell
-cd frontend
-npm run dev
-```
+The directive at the top of `claude/autopilot-phase-6-MepF2` was
+specified as Phase 6 of an autoresearcher v1.0 system whose phases 0–5
+did not exist in this repo. On 2026-05-09 the operator authorized
+Option C: invent phases 0–5 inline. The build that resulted is recorded
+in:
 
-Hot reload is enabled. Changes will be reflected immediately.
+- `docs/adr/0002-additive-plan.md` — the plan
+- `docs/adr/0003-tech-stack.md` — tech choices
+- `docs/adr/0004-monorepo-layout.md` — layout
+- `docs/adr/0005-hooks-and-stop-conditions.md` — policy gates
+- `docs/adr/0006-merge-policy.md` — merge policy as amended
+- `docs/adr/0007-integrations-notion-obsidian.md` — Notion + Obsidian sync
+- `docs/adr/0008-legacy-backend.md` — disposition of `backend/`
+- `docs/runs/phase-{0..6}.md` — per-phase HISTORIAN docs
+- `docs/runs/v1.0-launch.md` — final ship doc
+- `BLOCKER-phase-6-2026-05-09.md` — original BLOCKER, marked resolved
 
-### Backend Development
+## Stop conditions in force
 
-```powershell
-cd backend
-python main.py
-```
+Per `docs/adr/0005-hooks-and-stop-conditions.md`, runtime stop conditions
+are wired:
+- Per-run cost > $10 OR cumulative > $100 → halt + BLOCKER
+- Out-of-allowlist vertical → SCOUT rejects at tool layer + BLOCKER on
+  first occurrence
+- Pusher down >60s → degraded health, watchdog files BLOCKER
+- Tier-3 auto-merge attempt without `AUTOMERGE_AUTHORIZED` → hook blocks
+- Eval Tier-A regression → CI cascade fails, deploy blocked
 
-With auto-reload:
+## Legacy GPU dashboard
 
-```powershell
-uvicorn main:app --reload --port 8000
-```
-
-## Troubleshooting
-
-### GPU Not Detected
-
-- Ensure NVIDIA drivers are installed: `nvidia-smi`
-- Install pynvml: `pip install pynvml`
-- Run as administrator if needed
-
-### WebSocket Connection Failed
-
-- Check if backend is running on port 8000
-- Verify firewall settings allow the connection
-- Check browser console for errors
-
-### Frontend Build Errors
-
-- Ensure Node.js 18+ is installed: `node --version`
-- Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
-
-## License
-
-MIT License - See autoresearch-win-rtx for original project license.
+The `backend/` directory predates this build. It is a FastAPI GPU
+monitoring dashboard that runs on Railway via `railway*.{json,toml,py}`.
+ADR 0008 documents why we leave it in-tree for v1.0.
 
 ## Credits
 
-- Original autoresearch by @karpathy
-- Windows fork by @jsegov
-- Dashboard UI inspired by Palantir
+- Original autoresearch: Andrej Karpathy.
+- Windows fork: @jsegov.
+- v1.0 build (this README): operator-authorized inline buildout, 2026-05-09.

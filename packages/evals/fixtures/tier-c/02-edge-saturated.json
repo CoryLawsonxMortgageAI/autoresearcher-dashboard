@@ -1,0 +1,15 @@
+{
+  "id": "tier-c/edge-saturated-inputs",
+  "tier": "C",
+  "kind": "scoring-determinism",
+  "input": {
+    "evidenceCount": 999,
+    "domainAuthorityAvg": 100,
+    "hasNamedBuyer": true,
+    "marketHints": { "ttlMillions": 100000, "growth": 100 },
+    "competitiveCount": 0,
+    "founderEdgeNotes": ["a","b","c","d","e","f","g","h"]
+  },
+  "expect": { "totalMin": 38, "totalMax": 50 },
+  "description": "Saturated inputs do not exceed the 50 ceiling."
+}

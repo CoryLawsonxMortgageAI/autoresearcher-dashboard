@@ -1,0 +1,15 @@
+{
+  "id": "tier-c/edge-zero-evidence",
+  "tier": "C",
+  "kind": "scoring-determinism",
+  "input": {
+    "evidenceCount": 0,
+    "domainAuthorityAvg": 0,
+    "hasNamedBuyer": false,
+    "marketHints": { "ttlMillions": 0, "growth": 0 },
+    "competitiveCount": 50,
+    "founderEdgeNotes": []
+  },
+  "expect": { "totalMin": 0, "totalMax": 12 },
+  "description": "Worst-case inputs score in the bottom band."
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schemas.anthropic.com/claude-code/hooks-v1.json",
+  "_comment": "Hard policy gates for the autopilot. See docs/adr/0005-hooks-and-stop-conditions.md.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": { "tool": ["Write", "Edit"] },
+        "command": "node scripts/hooks/forbid-bad-writes.mjs",
+        "description": "Reject `any`, money-as-number, TODO outside /scratch, and any .env* except .env.example."
+      },
+      {
+        "matcher": { "tool": "Bash" },
+        "command": "node scripts/hooks/forbid-destructive-bash.mjs",
+        "description": "Hard-block rm -rf, DROP, force-push, gh repo delete, vercel env rm."
+      },
+      {
+        "matcher": { "tool": ["Write", "Edit", "Bash"] },
+        "command": "node scripts/hooks/forbid-automerge-tampering.mjs",
+        "description": "Hard-block writes to /.automerge-authorized or env lines containing AUTOMERGE."
+      },
+      {
+        "matcher": { "tool": "Bash", "argMatches": "gh\\s+pr\\s+merge" },
+        "command": "node scripts/hooks/require-merge-jwt.mjs",
+        "description": "Block gh pr merge without --admin AND without authenticated user JWT in call context."
+      },
+      {
+        "matcher": { "tool": ["Write", "Edit", "Bash"] },
+        "command": "node scripts/hooks/forbid-tier3-commits.mjs",
+        "description": "Hard-block commits modifying Tier-3 paths; file BLOCKER. Bypass requires AUTOMERGE_AUTHORIZED + signed /.automerge-authorized."
+      },
+      {
+        "matcher": { "tool": ["Write", "Edit"] },
+        "command": "node scripts/hooks/forbid-greenlit-impersonation.mjs",
+        "description": "Block writes to opportunities table with greenlit_by_user_id set by anything other than a real user JWT."
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": { "tool": "Write", "pathMatches": "packages/.*/src/.*" },
+        "command": "node scripts/hooks/queue-typecheck.mjs",
+        "description": "Queue typecheck after Write to packages/**/src/**"
+      },
+      {
+        "matcher": { "tool": "Bash", "argMatches": "gh\\s+pr\\s+create" },
+        "command": "node scripts/hooks/trigger-historian.mjs",
+        "description": "Trigger HISTORIAN to write a phase doc on PR creation."
+      }
+    ]
+  }
+}

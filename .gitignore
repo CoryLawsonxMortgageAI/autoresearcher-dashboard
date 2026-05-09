@@ -1,51 +1,79 @@
-# Python
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Builds
+dist/
+build/
+.next/
+.turbo/
+*.tsbuildinfo
+backend/app/frontend_dist/
+
+# Env (only .env.example is allowed; hook enforces this)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Coverage / tests
+coverage/
+.nyc_output/
+
+# Python (legacy GPU dashboard)
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
-parts/
 sdist/
 var/
 wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-# Virtual Environment
 venv/
 env/
 ENV/
 env.bak/
 venv.bak/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Drizzle
+.drizzle/
 
-# OS
-.DS_Store
-Thumbs.db
+# Local data
+/data/
+/tmp/
+*.sqlite
+*.sqlite3
+*.db
 
-# Logs
-*.log
-logs/
+# Inflight status: tracked in v1.0 so the initial state ships; the hourly
+# cron overwrites in-place. Operators can `git checkout -- docs/runs/_inflight.md`
+# if they want the diff to go away locally.
 
-# Local env files
-.env
-.env.local
-.env.*.local
-
-# Frontend dist (will be built)
-backend/app/frontend_dist/
+# Claude Code session artifacts
+.claude/local/

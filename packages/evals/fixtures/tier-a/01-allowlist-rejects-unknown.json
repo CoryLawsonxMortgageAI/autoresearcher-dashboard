@@ -1,0 +1,8 @@
+{
+  "id": "tier-a/allowlist-rejects-unknown",
+  "tier": "A",
+  "kind": "allowlist-rejection",
+  "input": { "slug": "consumer-meal-kits" },
+  "expect": { "rejected": true },
+  "description": "SCOUT must reject any vertical not in the allowlist."
+}

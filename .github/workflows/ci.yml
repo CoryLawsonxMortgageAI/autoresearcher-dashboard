@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, "feat/**", "claude/**"]
+
+jobs:
+  cascade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: "mysql://root:root@127.0.0.1:3306/autoresearcher_test"
+      JWT_SIGNING_KEY: "ci-only-jwt-key-must-be-at-least-32-chars"
+      ANTHROPIC_API_KEY: ""
+      PUSHER_APP_ID: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm -r --filter @autoresearcher/evals run a
+      - run: pnpm -r --filter @autoresearcher/evals run b
+      - run: pnpm -r --filter @autoresearcher/evals run c
+      - run: pnpm -r test --if-present
+      - run: pnpm -r build --if-present

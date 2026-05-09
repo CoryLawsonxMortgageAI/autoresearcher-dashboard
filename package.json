@@ -1,0 +1,32 @@
+{
+  "name": "autoresearcher",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Autopilot research agent + operator dashboard. Karpathy-minimal in spirit.",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.10.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "bootstrap": "bash scripts/bootstrap.sh",
+    "build": "pnpm -r --filter './packages/**' --filter './services/**' --filter './apps/**' build",
+    "dev": "pnpm -r --parallel --filter './services/api' --filter './apps/web' dev",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "evals": "pnpm --filter @autoresearcher/evals run all",
+    "db:generate": "pnpm --filter @autoresearcher/db generate",
+    "db:migrate": "pnpm --filter @autoresearcher/db migrate",
+    "db:seed": "tsx scripts/seed-fixtures.ts",
+    "scout:once": "pnpm --filter @autoresearcher/api scout:once",
+    "digest:dry": "pnpm --filter @autoresearcher/api digest:dry",
+    "sync-secrets": "tsx scripts/sync-secrets.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}
