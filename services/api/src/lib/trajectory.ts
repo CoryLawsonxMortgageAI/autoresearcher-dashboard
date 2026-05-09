@@ -13,7 +13,9 @@ const ROOT = process.env.TRAJECTORY_ROOT ?? "./data/trajectories";
 
 export type TrajectoryStep =
   | { kind: "llm"; model: string; system: string; userJson: unknown; outputText: string;
-      inputTokens: number; outputTokens: number; costCents: string; ms: number; at: string }
+      inputTokens: number; outputTokens: number;
+      cacheCreationInputTokens?: number; cacheReadInputTokens?: number;
+      costCents: string; ms: number; at: string }
   | { kind: "tool"; name: string; input: unknown; output: unknown; ms: number; at: string }
   | { kind: "note"; text: string; at: string }
   | { kind: "verdict"; verdict: string; notes: string; at: string };

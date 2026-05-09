@@ -6,6 +6,7 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { getDb, conversations as convTable, messages as msgTable } from "@autoresearcher/db";
 import { requireOperator } from "../middleware/auth.js";
+import { rateLimit } from "../middleware/rate-limit.js";
 import { runChatTurn } from "../agents/chat.js";
 
 export const chatRouter = new Hono();
@@ -55,7 +56,8 @@ const SendBody = z.object({
 //   event: tool   data: {"name": "...", "input": ...}
 //   event: result data: {"toolUseId": "...", "output": ...}
 //   event: done   data: {"inputTokens": ..., "outputTokens": ..., "costCents": "..."}
-chatRouter.post("/send", requireOperator, zValidator("json", SendBody), async (c) => {
+// Rate limit: 6 messages per operator per 30s burst, sustained 12/min.
+chatRouter.post("/send", requireOperator, rateLimit({ ratePerSec: 0.2, burst: 6, scope: "chat-send" }), zValidator("json", SendBody), async (c) => {
   const user = c.var.user;
   const { conversationId, message } = c.req.valid("json");
   const db = getDb();
@@ -90,7 +92,7 @@ chatRouter.post("/send", requireOperator, zValidator("json", SendBody), async (c
     const toolCallsForRecord: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
 
     try {
-      for await (const step of runChatTurn({ history, userMessage: message })) {
+      for await (const step of runChatTurn({ history, userMessage: message, operatorUserId: user.sub })) {
         if (step.kind === "text") {
           assistantText += step.text;
           await stream.writeSSE({ event: "text", data: JSON.stringify({ text: step.text }) });

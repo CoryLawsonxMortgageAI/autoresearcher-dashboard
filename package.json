@@ -18,6 +18,8 @@
     "evals": "pnpm --filter @autoresearcher/evals run all",
     "bench": "pnpm --filter @autoresearcher/learn run bench",
     "bench:live": "pnpm --filter @autoresearcher/learn run bench:live",
+    "swe-mini": "pnpm --filter @autoresearcher/learn run swe-mini",
+    "swe-mini:live": "pnpm --filter @autoresearcher/learn run swe-mini:live",
     "distill": "pnpm --filter @autoresearcher/learn run distill",
     "db:generate": "pnpm --filter @autoresearcher/db generate",
     "db:migrate": "pnpm --filter @autoresearcher/db migrate",

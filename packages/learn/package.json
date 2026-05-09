@@ -12,6 +12,8 @@
   "scripts": {
     "bench": "tsx src/coding-bench.ts",
     "bench:live": "tsx src/coding-bench.ts --live",
+    "swe-mini": "tsx src/swe-mini.ts",
+    "swe-mini:live": "tsx src/swe-mini.ts --live",
     "distill": "tsx src/distill.ts",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'learn has no lint step yet'",

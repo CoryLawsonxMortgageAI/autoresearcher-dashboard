@@ -33,15 +33,26 @@ describe("chat tool surface (static analysis of source)", () => {
     expect(block).not.toMatch(/name:\s*"write_skill"/);
   });
 
-  it("system prompt forbids greenlight/reject and explains why", () => {
+  it("system prompt forbids direct greenlight/reject and routes through magic links", () => {
     const sysBlock = src.match(/const CHAT_SYSTEM\s*=\s*`([\s\S]*?)`/);
     expect(sysBlock).toBeTruthy();
     const sys = sysBlock?.[1] ?? "";
     expect(sys).toMatch(/may NOT greenlight or reject/i);
-    expect(sys).toMatch(/operator's interactive tap/i);
-    // Audit trail clue: must mention user_id so the agent stays out of the
-    // operator's lane.
+    // The agent's safe path for confirming a decision: mint a magic link the
+    // operator clicks. The audit trail records THEIR user_id.
+    expect(sys).toMatch(/mint_greenlight_link|magic link/i);
     expect(sys).toMatch(/user_id/);
+  });
+
+  it("mint_greenlight_link binds to operator's verified user_id, not the agent's", () => {
+    // The dispatch path must thread ctx.operatorUserId into issueMagicLink's
+    // userId field — never use a tool-input-supplied userId.
+    expect(src).toMatch(/issueMagicLink\([\s\S]*?userId:\s*ctx\.operatorUserId/);
+    // Tool input must NOT accept a userId field — the operator's id comes
+    // from the JWT, not from the model.
+    const tool = src.match(/name:\s*"mint_greenlight_link"[\s\S]*?input_schema[\s\S]*?\}\s*,/);
+    expect(tool).toBeTruthy();
+    expect(tool?.[0]).not.toMatch(/userId/);
   });
 
   it("dispatchTool throws on unknown tool names (string match)", () => {

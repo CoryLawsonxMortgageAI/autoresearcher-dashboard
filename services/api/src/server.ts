@@ -3,6 +3,8 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { initSentry, captureException } from "./lib/sentry.js";
 import { initOtel } from "./lib/otel.js";
+import { requestId } from "./middleware/request-id.js";
+import { errorEnvelope } from "./lib/errors.js";
 import { healthRouter } from "./routes/health.js";
 import { activityRouter } from "./routes/activity.js";
 import { opportunitiesRouter } from "./routes/opportunities.js";
@@ -18,6 +20,7 @@ initSentry();
 void initOtel();
 
 export const app = new Hono();
+app.use("*", requestId);
 app.use("*", logger());
 app.use(
   "*",
@@ -35,7 +38,7 @@ app.use(
 
 app.onError((err, c) => {
   captureException(err);
-  return c.json({ error: err.message }, 500);
+  return errorEnvelope(c, err);
 });
 
 app.route("/api/health", healthRouter);

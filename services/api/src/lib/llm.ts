@@ -16,15 +16,25 @@ export const MODEL_OPUS = "claude-opus-4-7";
 export const MODEL_SONNET = "claude-sonnet-4-6";
 export const MODEL_HAIKU = "claude-haiku-4-5-20251001";
 
+export type LlmCallResult = {
+  text: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheCreationInputTokens: number;
+  cacheReadInputTokens: number;
+};
+
 // Karpathy-style: one entry point, one shape, no orchestration ceremony.
 // Prompt caching is enabled via the prompt-caching beta header so the system
-// prompt is reused across SCOUT/CRITIC calls in the same window.
+// prompt is reused across SCOUT/CRITIC calls in the same window. We surface
+// cache_creation_input_tokens and cache_read_input_tokens so the dashboard
+// can compute and display the hit rate per run (ADR 0013).
 export const callClaude = async (args: {
   model: string;
   system: string;
   userJson: unknown;
   maxTokens?: number;
-}): Promise<{ text: string; inputTokens: number; outputTokens: number }> => {
+}): Promise<LlmCallResult> => {
   const client = getClient();
   const resp = await client.beta.promptCaching.messages.create({
     model: args.model,
@@ -42,10 +52,19 @@ export const callClaude = async (args: {
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
     .map((b) => b.text)
     .join("\n");
+  // The beta usage type carries cache fields; cast to the shape we know.
+  const usage = resp.usage as unknown as {
+    input_tokens: number;
+    output_tokens: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
+  };
   return {
     text,
-    inputTokens: resp.usage.input_tokens,
-    outputTokens: resp.usage.output_tokens,
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+    cacheCreationInputTokens: usage.cache_creation_input_tokens ?? 0,
+    cacheReadInputTokens: usage.cache_read_input_tokens ?? 0,
   };
 };
 

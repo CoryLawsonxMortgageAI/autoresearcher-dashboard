@@ -218,28 +218,31 @@ const scoutVerticalBestOfN = async (args: {
 
   for (let attempt = 0; attempt < args.n; attempt++) {
     const t0 = Date.now();
-    const { text, inputTokens, outputTokens } = await callClaude({
+    const r = await callClaude({
       model: MODEL_OPUS,
       system: SCOUT_SYSTEM,
       userJson: { ...args.userJson, _attempt: attempt + 1, _ofN: args.n },
     });
-    inT += BigInt(inputTokens);
-    outT += BigInt(outputTokens);
-    cost += costCents(MODEL_OPUS, inputTokens, outputTokens);
+    inT += BigInt(r.inputTokens);
+    outT += BigInt(r.outputTokens);
+    cost += costCents(MODEL_OPUS, r.inputTokens, r.outputTokens);
 
     appendTrajectory(args.runId, {
       kind: "llm",
       model: MODEL_OPUS,
       system: "SCOUT_SYSTEM",
       userJson: args.userJson,
-      outputText: text.slice(0, 8000),
-      inputTokens, outputTokens,
+      outputText: r.text.slice(0, 8000),
+      inputTokens: r.inputTokens,
+      outputTokens: r.outputTokens,
+      cacheCreationInputTokens: r.cacheCreationInputTokens,
+      cacheReadInputTokens: r.cacheReadInputTokens,
       costCents: cost.toString(),
       ms: Date.now() - t0,
       at: new Date().toISOString(),
     });
 
-    const parsed = parseScoutOutput(text);
+    const parsed = parseScoutOutput(r.text);
     if (parsed) candidatePools.push(parsed.findings);
   }
 
