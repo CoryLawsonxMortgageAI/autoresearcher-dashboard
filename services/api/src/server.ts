@@ -12,6 +12,7 @@ import { scoutRouter } from "./routes/scout.js";
 import { evalsRouter } from "./routes/evals.js";
 import { learnRouter } from "./routes/learn.js";
 import { chatRouter } from "./routes/chat.js";
+import { trajectoriesRouter } from "./routes/trajectories.js";
 
 initSentry();
 void initOtel();
@@ -46,6 +47,7 @@ app.route("/api/scout", scoutRouter);
 app.route("/api/evals", evalsRouter);
 app.route("/api/learn", learnRouter);
 app.route("/api/chat", chatRouter);
+app.route("/api/trajectories", trajectoriesRouter);
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const { serve } = await import("@hono/node-server");

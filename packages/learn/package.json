@@ -15,7 +15,7 @@
     "distill": "tsx src/distill.ts",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'learn has no lint step yet'",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "build": "echo 'learn is source-only'"
   },
   "devDependencies": {

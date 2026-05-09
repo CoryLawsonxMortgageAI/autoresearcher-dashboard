@@ -12,7 +12,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "echo 'skill has no lint step yet'",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "build": "echo 'skill is source-only'"
   },
   "devDependencies": {

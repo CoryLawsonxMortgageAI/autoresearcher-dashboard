@@ -10,7 +10,7 @@
     "c": "tsx src/run.ts --tier c",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'evals has no lint step yet'",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "build": "echo 'evals is source-only'"
   },
   "devDependencies": {

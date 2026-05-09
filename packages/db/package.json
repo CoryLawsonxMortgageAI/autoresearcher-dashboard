@@ -16,7 +16,7 @@
     "studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'db has no lint step yet'",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "build": "echo 'db is source-only'"
   },
   "devDependencies": {

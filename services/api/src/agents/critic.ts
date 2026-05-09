@@ -6,6 +6,8 @@ import { callClaude, costCents, MODEL_OPUS } from "../lib/llm.js";
 import { CRITIC_SYSTEM } from "@autoresearcher/skill";
 import { startRun, finishRun } from "../lib/run-tracker.js";
 import { captureException } from "../lib/sentry.js";
+import { writeReflection } from "../lib/reflections.js";
+import { append as appendTrajectory } from "../lib/trajectory.js";
 
 const CriticOutput = z.object({
   verdict: z.enum(["approve", "reject", "needs-revision"]),
@@ -24,29 +26,64 @@ export const reviewOpportunity = async (opportunityId: string): Promise<CriticOu
     const opp = await db.query.opportunities.findFirst({ where: eq(oppTable.id, opportunityId) });
     if (!opp) throw new Error(`opportunity ${opportunityId} not found`);
 
+    const t0 = Date.now();
+    const userJson = {
+      opportunity: {
+        id: opp.id,
+        verticalSlug: opp.verticalSlug,
+        title: opp.title,
+        thesis: opp.thesis,
+        evidence: opp.evidence,
+        scoreTotal: opp.scoreTotal,
+        recommendedAction: opp.recommendedAction,
+      },
+    };
     const { text, inputTokens, outputTokens } = await callClaude({
       model: MODEL_OPUS,
       system: CRITIC_SYSTEM,
-      userJson: {
-        opportunity: {
-          id: opp.id,
-          verticalSlug: opp.verticalSlug,
-          title: opp.title,
-          thesis: opp.thesis,
-          evidence: opp.evidence,
-          scoreTotal: opp.scoreTotal,
-          recommendedAction: opp.recommendedAction,
-        },
-      },
+      userJson,
     });
     inT = BigInt(inputTokens); outT = BigInt(outputTokens);
     cost = costCents(MODEL_OPUS, inputTokens, outputTokens);
+
+    appendTrajectory(runId, {
+      kind: "llm",
+      model: MODEL_OPUS,
+      system: "CRITIC_SYSTEM",
+      userJson,
+      outputText: text.slice(0, 8000),
+      inputTokens, outputTokens,
+      costCents: cost.toString(),
+      ms: Date.now() - t0,
+      at: new Date().toISOString(),
+    });
 
     const verdict = parseVerdict(text);
     await db
       .update(oppTable)
       .set({ criticVerdict: verdict.verdict, criticNotes: verdict.notes })
       .where(eq(oppTable.id, opportunityId));
+
+    appendTrajectory(runId, {
+      kind: "verdict",
+      verdict: verdict.verdict,
+      notes: verdict.notes.slice(0, 1000),
+      at: new Date().toISOString(),
+    });
+
+    // Reflexion: a one-line note about what this review found, scoped to the
+    // vertical so the next SCOUT cycle for THIS vertical sees the lesson.
+    await writeReflection({
+      runId,
+      agent: "critic",
+      verticalSlug: opp.verticalSlug,
+      body: `[${verdict.verdict}] ${opp.title.slice(0, 80)}: ${verdict.topRiskOneLine}`.slice(0, 500),
+      metrics: {
+        evidenceVerified: verdict.evidenceVerified ? 1 : 0,
+        allowlistDrift: verdict.allowlistDrift ? 1 : 0,
+        verdictApprove: verdict.verdict === "approve" ? 1 : 0,
+      },
+    }).catch(() => {/* db unavailable; reflection is best-effort */});
 
     await finishRun({ runId, status: "completed", costCents: cost, inputTokens: inT, outputTokens: outT });
     return verdict;

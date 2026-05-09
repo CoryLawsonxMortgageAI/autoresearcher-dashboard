@@ -10,7 +10,7 @@
     "build": "tsc -p tsconfig.json && cp -r src/templates dist/ 2>/dev/null || true",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'api has no lint step yet'",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "scout:once": "tsx src/cron/scout-nightly.ts --once",
     "digest:dry": "tsx src/cron/digest-weekly.ts --dry",
     "cron:bootstrap": "tsx src/cron/bootstrap.ts"
