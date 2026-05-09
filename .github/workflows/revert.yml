@@ -1,0 +1,42 @@
+name: revert
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to revert
+        required: true
+        type: number
+      reason:
+        description: Reason for revert (logged in commit message)
+        required: true
+        type: string
+
+# Implements the directive's mandatory revert path:
+#   "revert merge commit + run down migration if applicable + trigger Vercel
+#    rollback to prior deployment".
+# Triggered by the operator from the dashboard's [Revert] button (within 24h).
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Find merge commit
+        id: find
+        run: |
+          sha=$(git log --format=%H --merges --grep="Merge pull request #${{ inputs.pr_number }}" -n 1)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Revert merge
+        run: |
+          git config user.name "autoresearcher-revert-bot"
+          git config user.email "revert@autoresearcher.local"
+          git revert --mainline 1 --no-edit ${{ steps.find.outputs.sha }}
+          git push origin main
+      - name: Vercel rollback
+        run: |
+          pnpm dlx vercel@latest rollback --token=${{ secrets.VERCEL_TOKEN }}

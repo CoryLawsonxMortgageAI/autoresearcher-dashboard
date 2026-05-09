@@ -1,4 +1,15 @@
-<!-- BLOCKER-OPEN -->
+<!-- BLOCKER-RESOLVED 2026-05-09 -->
+
+> **Resolved 2026-05-09.** Operator (Cory) selected Option C via
+> AskUserQuestion: invent phases 0–5 inline. He also granted permanent
+> Tier-3 self-merge override and confirmed identity. The plan is recorded
+> in `docs/adr/0002-additive-plan.md`; the merge-policy amendment is in
+> `docs/adr/0006-merge-policy.md`; the build itself is in commits on
+> `claude/autopilot-phase-6-MepF2` and the run doc is at
+> `docs/runs/v1.0-launch.md`. Leaving this file in-tree as the audit trail.
+
+---
+
 # BLOCKER — phase-6 — 2026-05-09
 
 Filed under directive stop condition: **"Material ambiguity in this directive."**

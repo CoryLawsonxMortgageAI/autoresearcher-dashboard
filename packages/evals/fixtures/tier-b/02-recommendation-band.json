@@ -1,0 +1,12 @@
+{
+  "id": "tier-b/recommendation-build-prototype",
+  "tier": "B",
+  "kind": "critic-verdict",
+  "input": {
+    "score": {
+      "fit": 9, "evidenceQuality": 8, "marketSize": 7, "competitiveDensity": 7, "founderEdge": 8, "total": 39
+    }
+  },
+  "expect": { "action": "build-prototype" },
+  "description": "Total >= 38 should recommend build-prototype."
+}

@@ -1,0 +1,25 @@
+# Fly.io worker config. Alternative to Railway. Whichever Cory has set up.
+app = "autoresearcher-worker"
+primary_region = "ord"
+
+[build]
+  dockerfile = "../services/worker/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  SCOUT_CRON = "0 3 * * *"
+  DIGEST_CRON = "0 9 * * MON"
+  INFLIGHT_CRON = "0 * * * *"
+
+[[services]]
+  internal_port = 3001
+  protocol = "tcp"
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+[deploy]
+  strategy = "rolling"

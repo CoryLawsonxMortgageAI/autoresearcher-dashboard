@@ -1,0 +1,8 @@
+{
+  "id": "tier-a/evidence-floor",
+  "tier": "A",
+  "kind": "evidence-floor",
+  "input": { "evidenceCount": 1 },
+  "expect": { "passes": false },
+  "description": "An opportunity with <2 evidence URLs must fail the floor check."
+}

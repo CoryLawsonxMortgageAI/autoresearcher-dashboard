@@ -71,8 +71,9 @@ venv.bak/
 *.sqlite3
 *.db
 
-# Inflight status (overwritten every 60min)
-docs/runs/_inflight.md
+# Inflight status: tracked in v1.0 so the initial state ships; the hourly
+# cron overwrites in-place. Operators can `git checkout -- docs/runs/_inflight.md`
+# if they want the diff to go away locally.
 
 # Claude Code session artifacts
 .claude/local/
