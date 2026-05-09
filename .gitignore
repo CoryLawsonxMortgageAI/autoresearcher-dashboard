@@ -44,6 +44,9 @@ coverage/
 # Reference solutions stay tracked.
 packages/learn/fixtures/coding-bench/*/solution.ts
 
+# Tier-E swe-mini: target file is generated per-run; reference-* stays tracked.
+packages/learn/fixtures/swe-mini/*/ranker.ts
+
 # Python (legacy GPU dashboard)
 __pycache__/
 *.py[cod]

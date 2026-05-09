@@ -38,27 +38,30 @@ export const reviewOpportunity = async (opportunityId: string): Promise<CriticOu
         recommendedAction: opp.recommendedAction,
       },
     };
-    const { text, inputTokens, outputTokens } = await callClaude({
+    const r = await callClaude({
       model: MODEL_OPUS,
       system: CRITIC_SYSTEM,
       userJson,
     });
-    inT = BigInt(inputTokens); outT = BigInt(outputTokens);
-    cost = costCents(MODEL_OPUS, inputTokens, outputTokens);
+    inT = BigInt(r.inputTokens); outT = BigInt(r.outputTokens);
+    cost = costCents(MODEL_OPUS, r.inputTokens, r.outputTokens);
 
     appendTrajectory(runId, {
       kind: "llm",
       model: MODEL_OPUS,
       system: "CRITIC_SYSTEM",
       userJson,
-      outputText: text.slice(0, 8000),
-      inputTokens, outputTokens,
+      outputText: r.text.slice(0, 8000),
+      inputTokens: r.inputTokens,
+      outputTokens: r.outputTokens,
+      cacheCreationInputTokens: r.cacheCreationInputTokens,
+      cacheReadInputTokens: r.cacheReadInputTokens,
       costCents: cost.toString(),
       ms: Date.now() - t0,
       at: new Date().toISOString(),
     });
 
-    const verdict = parseVerdict(text);
+    const verdict = parseVerdict(r.text);
     await db
       .update(oppTable)
       .set({ criticVerdict: verdict.verdict, criticNotes: verdict.notes })

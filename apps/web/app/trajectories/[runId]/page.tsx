@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 
 type Step =
   | { kind: "llm"; model: string; system: string; userJson: unknown; outputText: string;
-      inputTokens: number; outputTokens: number; costCents: string; ms: number; at: string }
+      inputTokens: number; outputTokens: number;
+      cacheCreationInputTokens?: number; cacheReadInputTokens?: number;
+      costCents: string; ms: number; at: string }
   | { kind: "tool"; name: string; input: unknown; output: unknown; ms: number; at: string }
   | { kind: "note"; text: string; at: string }
   | { kind: "verdict"; verdict: string; notes: string; at: string }
@@ -26,6 +28,13 @@ export default async function TrajectoryPage({ params }: { params: { runId: stri
   const totalIn = llmSteps.reduce((acc, s) => acc + s.inputTokens, 0);
   const totalOut = llmSteps.reduce((acc, s) => acc + s.outputTokens, 0);
   const totalMs = llmSteps.reduce((acc, s) => acc + s.ms, 0);
+  const totalCacheRead = llmSteps.reduce((acc, s) => acc + (s.cacheReadInputTokens ?? 0), 0);
+  const totalCacheCreate = llmSteps.reduce((acc, s) => acc + (s.cacheCreationInputTokens ?? 0), 0);
+  // Cache hit rate: read / (read + create + uncached). For our prompts the
+  // system block is the only cached portion; if cache_read > 0 across calls
+  // after the first, the stable system prompt is being reused.
+  const totalCacheable = totalCacheRead + totalCacheCreate;
+  const hitRate = totalCacheable === 0 ? 0 : totalCacheRead / totalCacheable;
 
   return (
     <>
@@ -33,6 +42,9 @@ export default async function TrajectoryPage({ params }: { params: { runId: stri
         <h1>/trajectories/{resp.runId.slice(0, 12)}</h1>
         <div className="meta">
           {resp.steps.length} steps · {llmSteps.length} llm · {totalIn} in · {totalOut} out · ${(Number(totalCost) / 100).toFixed(2)} · {totalMs}ms
+          {totalCacheable > 0 && (
+            <span style={{ marginLeft: 12 }}>· cache hit-rate <b style={{ color: "var(--green)" }}>{(hitRate * 100).toFixed(0)}%</b></span>
+          )}
         </div>
       </div>
 
@@ -45,6 +57,12 @@ export default async function TrajectoryPage({ params }: { params: { runId: stri
             <>
               <div style={{ fontSize: 11, color: "var(--fg-dim)" }}>
                 model <code>{s.model}</code> · system <code>{s.system}</code> · {s.inputTokens} in · {s.outputTokens} out · {s.ms}ms
+                {(s.cacheReadInputTokens ?? 0) > 0 && (
+                  <span style={{ marginLeft: 8, color: "var(--green)" }}>· cache hit ({s.cacheReadInputTokens})</span>
+                )}
+                {(s.cacheCreationInputTokens ?? 0) > 0 && (
+                  <span style={{ marginLeft: 8, color: "var(--amber)" }}>· cache create ({s.cacheCreationInputTokens})</span>
+                )}
               </div>
               <details style={{ marginTop: 8 }}>
                 <summary style={{ cursor: "pointer", fontSize: 11, color: "var(--fg-muted)" }}>user json</summary>

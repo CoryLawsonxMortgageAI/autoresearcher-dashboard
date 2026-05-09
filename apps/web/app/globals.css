@@ -171,6 +171,17 @@ code, pre {
 .kvs dt { color: var(--fg-muted); }
 .kvs dd { margin: 0; color: var(--fg); }
 
+/* Chat markdown renderer */
+.md p { margin: 4px 0; line-height: 1.55; }
+.md ul, .md ol { margin: 4px 0; padding-left: 22px; }
+.md li { margin: 2px 0; }
+.md code { background: var(--bg-2); padding: 1px 4px; border-radius: 2px; font-size: 12px; }
+.md pre { background: var(--bg-2); padding: 8px 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; }
+.md pre code { background: transparent; padding: 0; }
+.md a { color: var(--cyan); }
+.md strong { color: var(--fg); }
+.md em { color: var(--fg-dim); }
+
 /* Toast for live events */
 .toast-stack {
   position: fixed;
