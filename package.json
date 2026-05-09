@@ -24,10 +24,12 @@
     "db:seed": "tsx scripts/seed-fixtures.ts",
     "scout:once": "pnpm --filter @autoresearcher/api scout:once",
     "digest:dry": "pnpm --filter @autoresearcher/api digest:dry",
-    "sync-secrets": "tsx scripts/sync-secrets.ts"
+    "sync-secrets": "tsx scripts/sync-secrets.ts",
+    "operator-jwt": "tsx scripts/issue-operator-jwt.ts"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "jose": "^5.9.0",
     "tsx": "^4.19.0",
     "typescript": "^5.5.4",
     "vitest": "^2.0.5"
