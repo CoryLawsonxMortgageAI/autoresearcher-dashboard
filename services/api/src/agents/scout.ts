@@ -98,15 +98,17 @@ export const runScout = async (
 
     const verticals = loadVerticals().verticals;
     for (const v of verticals) {
-      const verticalReflections = await recentReflections({
-        agent: "scout", verticalSlug: v.slug, limit: 3,
-      }).catch(() => []);
+      const [scoutRefl, criticRefl] = await Promise.all([
+        recentReflections({ agent: "scout", verticalSlug: v.slug, limit: 2 }).catch(() => []),
+        recentReflections({ agent: "critic", verticalSlug: v.slug, limit: 3 }).catch(() => []),
+      ]);
+      const reflections = [...criticRefl, ...scoutRefl];
       const skills = skillsForVertical(v.slug, 5);
 
       const userJson = buildUserJson({
         v, fewShot,
         feedbackVersion: bank?.version ?? "v0-bootstrap",
-        reflections: renderReflections(verticalReflections),
+        reflections: renderReflections(reflections),
         skills: renderSkills(skills),
       });
 
