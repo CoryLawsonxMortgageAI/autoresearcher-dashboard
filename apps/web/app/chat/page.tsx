@@ -405,16 +405,7 @@ const renderDemoChat = (p: DemoChatProps): React.JSX.Element => {
 
       <div ref={p.scrollRef} style={{ maxHeight: "60vh", overflowY: "auto", marginBottom: 12, padding: 12, background: "var(--bg-1)", border: "1px solid var(--line)", borderRadius: 4 }}>
         {p.messages.length === 0 && (
-          <div className="empty">
-            ask anything. examples:
-            <div style={{ marginTop: 8, color: "var(--fg-dim)" }}>
-              · "what skills do you have?"<br />
-              · "explain the autoresearcher's scoring system"<br />
-              · "search skills for compliance"<br />
-              · "what's in the prompt bank?"<br />
-              · "what would you do differently in phase 0?"
-            </div>
-          </div>
+          <div className="empty">type a message to start.</div>
         )}
         {p.messages.map((m) => (
           <div key={m.id} style={{ marginBottom: 12 }}>
