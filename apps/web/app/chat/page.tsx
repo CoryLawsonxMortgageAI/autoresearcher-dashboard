@@ -47,7 +47,7 @@ export default function ChatPage() {
 
   const refreshConversations = async (): Promise<void> => {
     try {
-      const r = await fetch("/proxy/api/chat/conversations", { headers: authHeaders() });
+      const r = await fetch("/api/chat/conversations", { headers: authHeaders() });
       if (!r.ok) return;
       const j = (await r.json()) as { items: Conversation[] };
       setConvs(j.items);
@@ -61,7 +61,7 @@ export default function ChatPage() {
 
   const newConversation = async (): Promise<void> => {
     const title = window.prompt("Conversation title?", "scratchpad") ?? "scratchpad";
-    const r = await fetch("/proxy/api/chat/conversations", {
+    const r = await fetch("/api/chat/conversations", {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ title }),
@@ -78,7 +78,7 @@ export default function ChatPage() {
     setToolEvents([]);
     setStreamBuf("");
     setTokensLastTurn(null);
-    const r = await fetch(`/proxy/api/chat/conversations/${id}`, { headers: authHeaders() });
+    const r = await fetch(`/api/chat/conversations/${id}`, { headers: authHeaders() });
     if (!r.ok) return;
     const j = (await r.json()) as { messages: Message[] };
     setMessages(j.messages);
@@ -106,7 +106,7 @@ export default function ChatPage() {
     abortRef.current = ac;
 
     try {
-      const r = await fetch("/proxy/api/chat/send", {
+      const r = await fetch("/api/chat/send", {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify({ conversationId: activeId, message }),

@@ -85,3 +85,4 @@ venv.bak/
 
 # Claude Code session artifacts
 .claude/local/
+.vercel
