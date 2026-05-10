@@ -2,7 +2,19 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  experimental: { typedRoutes: true },
+  experimental: {
+    typedRoutes: true,
+    // Pull workspace fixtures into the serverless function bundle so
+    // packages/learn/fixtures/{skills,prompt-bank,coding-bench,swe-mini}
+    // are readable at runtime by readdirSync/readFileSync.
+    // The api catch-all route is the entrypoint that pulls these in.
+    outputFileTracingIncludes: {
+      "/api/[[...slug]]": [
+        "../../packages/learn/fixtures/**/*",
+        "../../packages/skills/**/verticals.json",
+      ],
+    },
+  },
   // Workspace TS sources are resolved as-is; Next must transpile them.
   transpilePackages: [
     "@autoresearcher/api",
