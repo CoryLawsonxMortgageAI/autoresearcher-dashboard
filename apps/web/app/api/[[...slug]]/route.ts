@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
-const handler = (req: Request): Promise<Response> => app.fetch(req);
+const handler = async (req: Request): Promise<Response> => app.fetch(req);
 
 export const GET = handler;
 export const POST = handler;

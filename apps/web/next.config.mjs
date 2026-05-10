@@ -11,6 +11,19 @@ const nextConfig = {
     "@autoresearcher/shared",
     "@autoresearcher/skill",
   ],
+  // Workspace packages use ESM-style .js imports that point at .ts source
+  // files (Karpathy idiom: source-only packages, no build step). Tell
+  // webpack to fall through .js -> .ts/.tsx during resolution.
+  webpack: (config) => {
+    config.resolve = config.resolve ?? {};
+    config.resolve.extensionAlias = {
+      ...(config.resolve.extensionAlias ?? {}),
+      ".js": [".ts", ".tsx", ".js", ".jsx"],
+      ".mjs": [".mts", ".mjs"],
+      ".cjs": [".cts", ".cjs"],
+    };
+    return config;
+  },
   async rewrites() {
     // Local dev: route /proxy/api/* to the standalone Hono server. In
     // production the API is served by a Next.js catch-all route handler

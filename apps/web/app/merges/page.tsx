@@ -67,10 +67,10 @@ export default async function MergesPage() {
             <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
               <a href={m.prUrl} target="_blank" rel="noreferrer"><button>open in github</button></a>
               {m.tier !== "tier-3" && m.status === "ready-for-tap" && (
-                <form action={`/proxy/api/merges/${m.prNumber}/tap`} method="post"><button className="primary">tap merge</button></form>
+                <form action={`/api/merges/${m.prNumber}/tap`} method="post"><button className="primary">tap merge</button></form>
               )}
               {inRevertWindow && (
-                <form action={`/proxy/api/merges/${m.prNumber}/revert`} method="post"><button className="danger">[revert]</button></form>
+                <form action={`/api/merges/${m.prNumber}/revert`} method="post"><button className="danger">[revert]</button></form>
               )}
             </div>
           </div>
