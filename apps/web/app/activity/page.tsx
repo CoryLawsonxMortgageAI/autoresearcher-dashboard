@@ -1,5 +1,6 @@
-import { apiFetch } from "../../lib/api";
+import { apiFetch, isDbUnavailableError } from "../../lib/api";
 import { rel } from "../../lib/format";
+import { DemoBanner } from "../../components/DemoBanner";
 
 type EventRow = {
   id: string;
@@ -15,19 +16,22 @@ export const dynamic = "force-dynamic";
 export default async function ActivityPage() {
   let items: EventRow[] = [];
   let err: string | null = null;
+  let demo = false;
   try {
     const res = await apiFetch<{ items: EventRow[] }>("/api/activity?limit=200");
     items = res.items;
   } catch (e) {
-    err = e instanceof Error ? e.message : String(e);
+    if (isDbUnavailableError(e)) demo = true;
+    else err = e instanceof Error ? e.message : String(e);
   }
 
   return (
     <>
       <div className="head">
         <h1>/activity</h1>
-        <div className="meta">{items.length} events · live</div>
+        <div className="meta">{demo ? "demo mode · no events" : `${items.length} events · live`}</div>
       </div>
+      {demo && <DemoBanner kind="no-db" />}
       {err && <div className="card"><span className="tag red">api</span> {err}</div>}
       <div className="feed">
         {items.length === 0 && !err && <div className="empty">no activity yet</div>}

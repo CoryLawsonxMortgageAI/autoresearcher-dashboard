@@ -1,5 +1,6 @@
-import { apiFetch } from "../../lib/api";
+import { apiFetch, isDbUnavailableError } from "../../lib/api";
 import { ts } from "../../lib/format";
+import { DemoBanner } from "../../components/DemoBanner";
 
 type EvalRun = {
   id: string;
@@ -15,10 +16,12 @@ export const dynamic = "force-dynamic";
 export default async function EvalsPage() {
   let latest: Record<string, EvalRun | null> = {};
   let err: string | null = null;
+  let demo = false;
   try {
     latest = await apiFetch<Record<string, EvalRun | null>>("/api/evals/latest");
   } catch (e) {
-    err = e instanceof Error ? e.message : String(e);
+    if (isDbUnavailableError(e)) demo = true;
+    else err = e instanceof Error ? e.message : String(e);
   }
 
   const tiers = [
@@ -33,6 +36,7 @@ export default async function EvalsPage() {
         <h1>/evals</h1>
         <div className="meta">latest run per tier</div>
       </div>
+      {demo && <DemoBanner kind="no-db" />}
       {err && <div className="card"><span className="tag red">api</span> {err}</div>}
       {tiers.map((t) => {
         const r = latest[t.key];

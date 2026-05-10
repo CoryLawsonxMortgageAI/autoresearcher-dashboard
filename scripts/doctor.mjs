@@ -82,9 +82,12 @@ console.log("");
     const haveDb = probe("DATABASE_URL");
     const haveJwt = probe("JWT_SIGNING_KEY");
     const haveAnt = probe("ANTHROPIC_API_KEY");
+    const haveOr = probe("OPENROUTER_API_KEY");
     if (haveDb) ok("DATABASE_URL set"); else warn("DATABASE_URL not set — DB-touching routes will 500.");
     if (haveJwt) ok("JWT_SIGNING_KEY set"); else warn("JWT_SIGNING_KEY not set — auth/magic-link routes will 500.");
-    if (haveAnt) ok("ANTHROPIC_API_KEY set"); else warn("ANTHROPIC_API_KEY not set — agents (SCOUT/CRITIC/chat) won't run.");
+    if (haveAnt) ok("ANTHROPIC_API_KEY set (LLM provider: anthropic native)");
+    else if (haveOr) ok("OPENROUTER_API_KEY set (LLM provider: openrouter)");
+    else warn("No LLM key set — agents (SCOUT/CRITIC/chat) won't run. Set ANTHROPIC_API_KEY or OPENROUTER_API_KEY.");
   } else fail(".env missing. Copy .env.example to .env and fill in. Or run pnpm bootstrap.");
 }
 

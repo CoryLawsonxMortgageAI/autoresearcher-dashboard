@@ -1,5 +1,6 @@
-import { apiFetch } from "../../lib/api";
+import { apiFetch, isDbUnavailableError } from "../../lib/api";
 import { rel } from "../../lib/format";
+import { DemoBanner } from "../../components/DemoBanner";
 
 type MergeRow = {
   id: string;
@@ -22,11 +23,13 @@ export const dynamic = "force-dynamic";
 export default async function MergesPage() {
   let items: MergeRow[] = [];
   let err: string | null = null;
+  let demo = false;
   try {
     const r = await apiFetch<{ items: MergeRow[] }>("/api/merges");
     items = r.items;
   } catch (e) {
-    err = e instanceof Error ? e.message : String(e);
+    if (isDbUnavailableError(e)) demo = true;
+    else err = e instanceof Error ? e.message : String(e);
   }
 
   return (
@@ -36,8 +39,9 @@ export default async function MergesPage() {
         <div className="meta">{items.length} prs · tap to merge tier-1/2 · tier-3 opens GitHub</div>
       </div>
 
+      {demo && <DemoBanner kind="no-db" />}
       {err && <div className="card"><span className="tag red">api</span> {err}</div>}
-      {items.length === 0 && !err && <div className="empty">no merges queued</div>}
+      {items.length === 0 && !err && !demo && <div className="empty">no merges queued</div>}
 
       {items.map((m) => {
         const revertWindow = m.revertableUntil ? new Date(m.revertableUntil).getTime() - Date.now() : 0;

@@ -57,6 +57,58 @@ const SendBody = z.object({
 //   event: result data: {"toolUseId": "...", "output": ...}
 //   event: done   data: {"inputTokens": ..., "outputTokens": ..., "costCents": "..."}
 // Rate limit: 6 messages per operator per 30s burst, sustained 12/min.
+// ----- Demo chat (no auth, no DB) -----
+// Activated when DATABASE_URL is not set. Lets the operator chat with the
+// agent before infra is fully provisioned. No persistence. Heavily rate
+// limited (LLM calls cost real money). Tools that require DB return a
+// friendly degraded message instead of throwing.
+const QuickBody = z.object({
+  message: z.string().min(1).max(8000),
+  history: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().min(1).max(8000),
+  })).max(20).default([]),
+});
+
+chatRouter.post(
+  "/quick",
+  rateLimit({
+    ratePerSec: 1 / 6, // sustained: 1 per 6s
+    burst: 4,
+    scope: "chat-quick",
+    key: (c) => `ip:${c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? "anon"}`,
+  }),
+  zValidator("json", QuickBody),
+  async (c) => {
+    const { message, history } = c.req.valid("json");
+    return streamSSE(c, async (stream) => {
+      try {
+        for await (const step of runChatTurn({
+          history,
+          userMessage: message,
+          operatorUserId: "demo-anon",
+        })) {
+          if (step.kind === "text") {
+            await stream.writeSSE({ event: "text", data: JSON.stringify({ text: step.text }) });
+          } else if (step.kind === "tool_use") {
+            await stream.writeSSE({ event: "tool", data: JSON.stringify({ id: step.id, name: step.name, input: step.input }) });
+          } else if (step.kind === "tool_result") {
+            await stream.writeSSE({ event: "result", data: JSON.stringify({ toolUseId: step.toolUseId, output: step.output }) });
+          } else if (step.kind === "done") {
+            await stream.writeSSE({
+              event: "done",
+              data: JSON.stringify({ inputTokens: step.inputTokens, outputTokens: step.outputTokens, costCents: step.costCents }),
+            });
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        await stream.writeSSE({ event: "error", data: JSON.stringify({ error: msg }) });
+      }
+    });
+  }
+);
+
 chatRouter.post("/send", requireOperator, rateLimit({ ratePerSec: 0.2, burst: 6, scope: "chat-send" }), zValidator("json", SendBody), async (c) => {
   const user = c.var.user;
   const { conversationId, message } = c.req.valid("json");
