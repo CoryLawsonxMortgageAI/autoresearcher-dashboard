@@ -11,9 +11,14 @@
 //
 // Skills are matched against a vertical slug at SCOUT call time. Operator
 // edits, version-controls, reviews in PRs. No retrieval magic.
+//
+// Runtime resolution: try the FS first (works in dev + Node hosts that bundle
+// the fixtures dir); fall back to ./_embedded/skills.ts (bundled into Next.js
+// serverless functions). Both stay in sync; the .md is the source of truth.
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { EMBEDDED_SKILLS } from "./_embedded/skills.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(here, "..", "fixtures", "skills");
@@ -67,18 +72,24 @@ let _cache: Skill[] | null = null;
 
 export const loadSkills = (): Skill[] => {
   if (_cache) return _cache;
-  if (!existsSync(SKILLS_DIR)) {
-    _cache = [];
-    return _cache;
+  try {
+    if (existsSync(SKILLS_DIR)) {
+      const files = readdirSync(SKILLS_DIR).filter((f) => f.endsWith(".md"));
+      const skills: Skill[] = [];
+      for (const f of files) {
+        const raw = readFileSync(join(SKILLS_DIR, f), "utf8");
+        const parsed = parseFrontmatter(raw, f);
+        if (parsed) skills.push(parsed);
+      }
+      if (skills.length > 0) {
+        _cache = skills.sort((a, b) => b.priority - a.priority);
+        return _cache;
+      }
+    }
+  } catch {
+    // fall through to embedded
   }
-  const files = readdirSync(SKILLS_DIR).filter((f) => f.endsWith(".md"));
-  const skills: Skill[] = [];
-  for (const f of files) {
-    const raw = readFileSync(join(SKILLS_DIR, f), "utf8");
-    const parsed = parseFrontmatter(raw, f);
-    if (parsed) skills.push(parsed);
-  }
-  _cache = skills.sort((a, b) => b.priority - a.priority);
+  _cache = [...EMBEDDED_SKILLS].sort((a, b) => b.priority - a.priority);
   return _cache;
 };
 

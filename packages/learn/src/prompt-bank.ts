@@ -2,10 +2,11 @@
 // opaque embeddings or fine-tuned weights. Each distillation writes a new
 // versioned file; the agent reads the latest. Operator can `git checkout`
 // a prior version if a learning iteration regresses.
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { z } from "zod";
+import { EMBEDDED_BANK, EMBEDDED_BANK_VERSIONS } from "./_embedded/bank.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const BANK_DIR = join(here, "..", "fixtures", "prompt-bank");
@@ -39,21 +40,33 @@ const versionFromName = (n: string): { major: number; rest: string } | null => {
 };
 
 export const listVersions = (): string[] => {
-  return readdirSync(BANK_DIR)
-    .filter((f) => f.endsWith(".json"))
-    .sort((a, b) => {
-      const va = versionFromName(a)?.major ?? 0;
-      const vb = versionFromName(b)?.major ?? 0;
-      return va - vb;
-    });
+  try {
+    if (existsSync(BANK_DIR)) {
+      const fs = readdirSync(BANK_DIR)
+        .filter((f) => f.endsWith(".json"))
+        .sort((a, b) => {
+          const va = versionFromName(a)?.major ?? 0;
+          const vb = versionFromName(b)?.major ?? 0;
+          return va - vb;
+        });
+      if (fs.length > 0) return fs;
+    }
+  } catch {/* fall through */}
+  return [...EMBEDDED_BANK_VERSIONS];
 };
 
 export const loadLatestBank = (): PromptBank => {
-  const versions = listVersions();
-  const latest = versions[versions.length - 1];
-  if (!latest) throw new Error("no prompt bank versions present");
-  const raw = readFileSync(join(BANK_DIR, latest), "utf8");
-  return PromptBank.parse(JSON.parse(raw));
+  try {
+    if (existsSync(BANK_DIR)) {
+      const versions = readdirSync(BANK_DIR).filter((f) => f.endsWith(".json")).sort();
+      const latest = versions[versions.length - 1];
+      if (latest) {
+        const raw = readFileSync(join(BANK_DIR, latest), "utf8");
+        return PromptBank.parse(JSON.parse(raw));
+      }
+    }
+  } catch {/* fall through */}
+  return EMBEDDED_BANK;
 };
 
 export const writeBank = (bank: PromptBank): { path: string } => {
