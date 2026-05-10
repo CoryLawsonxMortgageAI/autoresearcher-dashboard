@@ -19,7 +19,7 @@ packages/db/           Drizzle MySQL schema (PlanetScale-compatible)
 packages/skills/       Vertical allowlist + deterministic scorer + prompts
 packages/evals/        Tier A/B/C runner + checked-in fixtures
 packages/tsconfig/     Shared TS base config
-scripts/               bootstrap.sh, sync-secrets.ts, seed-fixtures.ts, hooks/
+scripts/               bootstrap.mjs, doctor.mjs, sync-secrets.ts, seed-fixtures.ts, hooks/
 docs/adr/              Architecture decisions
 docs/runs/             HISTORIAN write-ups + _inflight.md
 .claude/hooks.json     PreToolUse / PostToolUse policy gates
@@ -29,14 +29,49 @@ backend/               LEGACY: GPU monitoring FastAPI (see ADR 0008)
 
 ## Quick start
 
+Cross-platform (Linux, macOS, Windows):
+
 ```bash
 pnpm install
-cp .env.example .env  # fill in secrets, or `pnpm sync-secrets` from Vercel
-pnpm bootstrap        # install + migrate + seed + dev + open browser
+pnpm doctor      # pre-flight: Node 20.10+, pnpm 9+, git, .env, line endings
+pnpm bootstrap   # install + .env + migrate (if DATABASE_URL set) + seed + dev + open browser
 ```
 
 The dashboard is at `http://localhost:3000/activity`. The API is at
 `http://localhost:3001`.
+
+### Windows (HP / any Win10/11 laptop)
+
+The system is verified on Windows via:
+- Node 20.10+ (install via [nvm-windows](https://github.com/coreybutler/nvm-windows) or [volta](https://volta.sh))
+- pnpm 9 (`corepack enable && corepack prepare pnpm@9 --activate`)
+- [Git for Windows](https://git-scm.com/download/win) (provides `git` + Git Bash if you prefer a Unix-style shell, but it's not required)
+
+`pnpm bootstrap` is a Node script (`scripts/bootstrap.mjs`); it runs
+identically in cmd, PowerShell, and Git Bash. `pnpm doctor` reports the
+actual versions and flags common Windows foot-guns:
+
+| Foot-gun                                    | Mitigation                                                       |
+|---------------------------------------------|------------------------------------------------------------------|
+| `git autocrlf` corrupting skill `.md` parse | `.gitattributes` enforces LF; the parser also tolerates CRLF.    |
+| Defender real-time scan slowing `pnpm install` | Exclude the repo dir + `%USERPROFILE%\.local\share\pnpm` from real-time scanning. |
+| Long-path issues (>260 chars)               | Enable long paths: `git config --system core.longpaths true`.    |
+| `.cmd` shim resolution                      | Bench/swe-mini `execSync` calls go through `cmd.exe` automatically. |
+| Default file path with spaces (`C:\Users\<name>\…`) | All `execSync` paths are quoted; `path.join` produces correct separators. |
+
+Common shell differences:
+- `cmd.exe`: `set FOO=bar && pnpm dev`
+- PowerShell: `$env:FOO="bar"; pnpm dev`
+- Git Bash: `FOO=bar pnpm dev`
+
+The `.env` file is loaded by Node directly (services/api uses `process.env`
+with no special parser), so the same `.env` works on every shell.
+
+### macOS / Linux
+
+Same commands (`pnpm install` → `pnpm doctor` → `pnpm bootstrap`). The
+bootstrap script auto-detects the OS for the browser-open step
+(`open` on macOS, `xdg-open` on Linux, `cmd /c start` on Windows).
 
 ## Production
 

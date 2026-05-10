@@ -68,7 +68,8 @@ const listProblems = (): Problem[] => {
 
 const runTests = (dir: string): { ok: true } | { ok: false; output: string } => {
   try {
-    execSync(`pnpm dlx tsx ${join(dir, "tests.ts")}`, { stdio: "pipe" });
+    // Quote for Windows paths with spaces (e.g., C:\Users\Cory\...).
+    execSync(`pnpm dlx tsx "${join(dir, "tests.ts")}"`, { stdio: "pipe" });
     return { ok: true };
   } catch (err) {
     const e = err as { stdout?: Buffer; stderr?: Buffer; message?: string };
