@@ -32,15 +32,17 @@ export type Skill = {
   filename: string;
 };
 
-const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+// CRLF-tolerant: Windows checkouts may have inserted \r\n line endings.
+// .gitattributes enforces LF, but we still tolerate CRLF here defensively.
+const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/;
 
 const parseFrontmatter = (raw: string, filename: string): Skill | null => {
   const m = raw.match(FRONTMATTER_RE);
   if (!m) return null;
   const fm = m[1] ?? "";
-  const body = (m[2] ?? "").trim();
+  const body = (m[2] ?? "").replace(/\r\n/g, "\n").trim();
   const obj: Record<string, string | string[] | number> = {};
-  for (const line of fm.split("\n")) {
+  for (const line of fm.split(/\r?\n/)) {
     const kv = line.match(/^([a-zA-Z_]+):\s*(.+)$/);
     if (!kv) continue;
     const key = kv[1] ?? "";

@@ -50,7 +50,11 @@ const listProblems = (): string[] =>
 
 const runTests = (dir: string): { ok: true } | { ok: false; output: string } => {
   try {
-    execSync(`pnpm dlx tsx ${join(dir, "tests.ts")}`, { stdio: "pipe" });
+    // Quote the path: Windows installs commonly land under "C:\Users\<name>\..."
+    // which contains spaces. execSync uses the default shell (cmd.exe on
+    // Windows, /bin/sh on Unix) when given a string command, which resolves
+    // .cmd shims correctly for `pnpm`.
+    execSync(`pnpm dlx tsx "${join(dir, "tests.ts")}"`, { stdio: "pipe" });
     return { ok: true };
   } catch (err) {
     const e = err as { stdout?: Buffer; stderr?: Buffer; message?: string };

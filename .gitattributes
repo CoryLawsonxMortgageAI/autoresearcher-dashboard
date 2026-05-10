@@ -1,0 +1,43 @@
+# Enforce LF for code, configs, and skill markdown so Windows checkouts
+# (which default to autocrlf=true under Git for Windows) don't silently
+# break the YAML frontmatter parser in packages/learn/src/skills.ts and
+# similar.
+*               text=auto eol=lf
+
+# Source: hard LF.
+*.ts            text eol=lf
+*.tsx           text eol=lf
+*.js            text eol=lf
+*.jsx           text eol=lf
+*.mjs           text eol=lf
+*.cjs           text eol=lf
+*.json          text eol=lf
+*.yaml          text eol=lf
+*.yml           text eol=lf
+*.md            text eol=lf
+*.sh            text eol=lf
+*.toml          text eol=lf
+*.css           text eol=lf
+*.html          text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+.editorconfig   text eol=lf
+.nvmrc          text eol=lf
+.npmrc          text eol=lf
+
+# Lockfile and migrations: never touch.
+pnpm-lock.yaml  text eol=lf -diff
+*.sql           text eol=lf
+
+# PowerShell scripts (if added later) want CRLF.
+*.ps1           text eol=crlf
+
+# Binaries: don't munge.
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.pdf           binary
+*.woff          binary
+*.woff2         binary
