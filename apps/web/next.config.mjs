@@ -2,16 +2,17 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Repo root, so outputFileTracing can include workspace files outside apps/web.
+  outputFileTracingRoot: "../..",
   experimental: {
     typedRoutes: true,
     // Pull workspace fixtures into the serverless function bundle so
     // packages/learn/fixtures/{skills,prompt-bank,coding-bench,swe-mini}
     // are readable at runtime by readdirSync/readFileSync.
-    // The api catch-all route is the entrypoint that pulls these in.
     outputFileTracingIncludes: {
-      "/api/[[...slug]]": [
+      "/api/[[...slug]]/route": [
         "../../packages/learn/fixtures/**/*",
-        "../../packages/skills/**/verticals.json",
+        "../../packages/skills/autoresearcher/verticals.json",
       ],
     },
   },
