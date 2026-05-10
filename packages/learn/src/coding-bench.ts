@@ -105,18 +105,37 @@ const synthesizeWithClaude = async (args: {
   attempt: number;
   ofN: number;
 }): Promise<string> => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY required for --live mode");
+  // Accept either ANTHROPIC_API_KEY (native) or OPENROUTER_API_KEY (proxy).
+  // Mirrors the provider abstraction in services/api/src/lib/llm-client.ts;
+  // we don't import that here to keep packages/learn dep-light.
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  if (!anthropicKey && !openrouterKey) {
+    throw new Error("Set ANTHROPIC_API_KEY or OPENROUTER_API_KEY for --live mode");
+  }
   const sdk = await import("@anthropic-ai/sdk");
   const Anthropic = sdk.default;
-  const client = new Anthropic({ apiKey });
+  const isOpenRouter = !anthropicKey && !!openrouterKey;
+  const client = new Anthropic({
+    apiKey: anthropicKey ?? openrouterKey ?? "",
+    ...(isOpenRouter
+      ? {
+          baseURL: process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1",
+          defaultHeaders: {
+            "HTTP-Referer": process.env.OPENROUTER_REFERRER ?? "https://autoresearcher-dashboard.vercel.app",
+            "X-Title": "autoresearcher-bench",
+          },
+        }
+      : {}),
+  });
+  const modelId = isOpenRouter ? "anthropic/claude-opus-4-7" : "claude-opus-4-7";
 
   const userContent = args.lastFailure
     ? `${args.spec}\n\n---\nPrevious attempt (${args.attempt - 1}/${args.ofN}) failed with:\n\`\`\`\n${args.lastFailure.slice(-2000)}\n\`\`\`\nProduce a corrected solution.ts. Do not repeat the failing approach.`
     : args.spec;
 
   const resp = await client.messages.create({
-    model: "claude-opus-4-7",
+    model: modelId,
     max_tokens: 2048,
     system:
       "You write TypeScript. Given a problem spec, return ONLY the contents of solution.ts. " +

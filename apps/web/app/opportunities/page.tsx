@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { apiFetch } from "../../lib/api";
+import { apiFetch, isDbUnavailableError } from "../../lib/api";
 import { rel } from "../../lib/format";
+import { DemoBanner } from "../../components/DemoBanner";
 
 type OppRow = {
   id: string;
@@ -25,11 +26,13 @@ export default async function OpportunitiesPage({
   if (searchParams.minScore) qs.set("minScore", searchParams.minScore);
   let items: OppRow[] = [];
   let err: string | null = null;
+  let demo = false;
   try {
     const r = await apiFetch<{ items: OppRow[] }>(`/api/opportunities?${qs.toString()}`);
     items = r.items;
   } catch (e) {
-    err = e instanceof Error ? e.message : String(e);
+    if (isDbUnavailableError(e)) demo = true;
+    else err = e instanceof Error ? e.message : String(e);
   }
 
   return (
@@ -48,6 +51,7 @@ export default async function OpportunitiesPage({
         <Link href="/opportunities">all</Link>
       </div>
 
+      {demo && <DemoBanner kind="no-db" />}
       {err && <div className="card"><span className="tag red">api</span> {err}</div>}
 
       <div className="row head-row">

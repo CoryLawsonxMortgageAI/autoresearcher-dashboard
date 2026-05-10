@@ -27,3 +27,21 @@ export const apiFetch = async <T>(path: string, init?: RequestInit): Promise<T> 
   }
   return (await r.json()) as T;
 };
+
+// Detects the structured 500 envelope shape we ship from the API:
+//   { error: { code: "internal", message: "DATABASE_URL is not set..." } }
+// Pages use this to render demo-mode copy instead of a raw 500.
+export const isDbUnavailableError = (err: unknown): boolean => {
+  if (!(err instanceof Error)) return false;
+  return /DATABASE_URL is not set/i.test(err.message);
+};
+
+export type Health = {
+  demo: boolean;
+  ready: { db: boolean; auth: boolean; llm: boolean };
+  llm: { provider: "anthropic" | "openrouter" | "none"; modelId: string | null };
+};
+
+export const fetchHealth = async (): Promise<Health | null> => {
+  try { return await apiFetch<Health>("/api/health"); } catch { return null; }
+};

@@ -10,7 +10,7 @@
 // Tool-use loop runs up to MAX_TOOL_ITERATIONS so a single user message can
 // chain calls (e.g., "search opps in mortgage and run the critic on the top 3").
 
-import Anthropic from "@anthropic-ai/sdk";
+import type Anthropic from "@anthropic-ai/sdk";
 import { eq, desc, and, gte, like, or, sql } from "drizzle-orm";
 import { getDb, opportunities as oppTable, reflections as reflTable, type OpportunityRow } from "@autoresearcher/db";
 import { loadSkills, loadLatestBank } from "@autoresearcher/learn";
@@ -18,9 +18,9 @@ import { runScout } from "./scout.js";
 import { reviewOpportunity } from "./critic.js";
 import { recentReflections } from "../lib/reflections.js";
 import { costCents } from "../lib/llm.js";
+import { getAnthropic, resolveModel } from "../lib/llm-client.js";
 import { issueMagicLink } from "../lib/auth.js";
 
-const MODEL = "claude-opus-4-7";
 const MAX_TOOL_ITERATIONS = 6;
 
 const TOOLS: Anthropic.Tool[] = [
@@ -164,16 +164,11 @@ export type ChatTurnArgs = {
   operatorUserId: string;
 };
 
-const makeClient = (): Anthropic => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set.");
-  return new Anthropic({ apiKey });
-};
-
 // Streaming chat turn. Emits ChatStep events for the route to forward as SSE.
 // Resolves once the loop terminates (assistant has no more tool calls).
 export async function* runChatTurn(args: ChatTurnArgs): AsyncGenerator<ChatStep, void, unknown> {
-  const client = makeClient();
+  const client = getAnthropic();
+  const modelId = resolveModel("opus");
 
   type AnthropicMsg = { role: "user" | "assistant"; content: string | Anthropic.MessageParam["content"] };
   const messages: AnthropicMsg[] = [
@@ -187,7 +182,7 @@ export async function* runChatTurn(args: ChatTurnArgs): AsyncGenerator<ChatStep,
 
   for (let iter = 0; iter < MAX_TOOL_ITERATIONS; iter++) {
     const resp = await client.messages.create({
-      model: MODEL,
+      model: modelId,
       max_tokens: 2048,
       system: CHAT_SYSTEM,
       tools: TOOLS,
@@ -195,7 +190,7 @@ export async function* runChatTurn(args: ChatTurnArgs): AsyncGenerator<ChatStep,
     });
     totalIn += resp.usage.input_tokens;
     totalOut += resp.usage.output_tokens;
-    totalCost += costCents(MODEL, resp.usage.input_tokens, resp.usage.output_tokens);
+    totalCost += costCents("opus", resp.usage.input_tokens, resp.usage.output_tokens);
 
     const toolCalls: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
     for (const block of resp.content) {
@@ -251,6 +246,16 @@ const replacer = (_k: string, v: unknown): unknown => {
   return v;
 };
 
+const isDbReady = (): boolean => !!process.env.DATABASE_URL;
+const dbUnavailable = (toolName: string) => ({
+  error: "DATABASE_URL not set on this deploy",
+  hint:
+    `Tool '${toolName}' needs the database. Set DATABASE_URL in Vercel project env ` +
+    `(Settings → Environment Variables), redeploy, then run pnpm db:migrate. ` +
+    `Read-only tools that don't need the DB (list_skills, get_prompt_bank, search_text on skills) ` +
+    `still work right now.`,
+});
+
 const dispatchTool = async (
   name: string,
   input: Record<string, unknown>,
@@ -258,6 +263,7 @@ const dispatchTool = async (
 ): Promise<unknown> => {
   switch (name) {
     case "query_opportunities": {
+      if (!isDbReady()) return dbUnavailable("query_opportunities");
       const status = input["status"] as string | undefined;
       const verticalSlug = input["verticalSlug"] as string | undefined;
       const minScore = input["minScore"] as number | undefined;
@@ -279,15 +285,18 @@ const dispatchTool = async (
       return rows.map((r) => ({ ...r, scoreTotal: r.scoreTotal / 10 }));
     }
     case "get_opportunity": {
+      if (!isDbReady()) return dbUnavailable("get_opportunity");
       const id = String(input["id"] ?? "");
       const row = await getDb().query.opportunities.findFirst({ where: eq(oppTable.id, id) });
       return row ?? { error: "not found" };
     }
     case "review_opportunity": {
+      if (!isDbReady()) return dbUnavailable("review_opportunity");
       const id = String(input["id"] ?? "");
       return await reviewOpportunity(id);
     }
     case "run_scout_now": {
+      if (!isDbReady()) return dbUnavailable("run_scout_now");
       return await runScout({ phase: "ad-hoc" });
     }
     case "list_skills": {
@@ -302,6 +311,7 @@ const dispatchTool = async (
       }
     }
     case "list_reflections": {
+      if (!isDbReady()) return dbUnavailable("list_reflections");
       const agent = (input["agent"] as "scout" | "critic" | "historian") ?? "scout";
       const verticalSlug = input["verticalSlug"] as string | undefined;
       const limit = Math.min(50, Number(input["limit"] ?? 10));
@@ -309,6 +319,7 @@ const dispatchTool = async (
       return rows;
     }
     case "mint_greenlight_link": {
+      if (!isDbReady()) return dbUnavailable("mint_greenlight_link");
       const opportunityId = String(input["opportunityId"] ?? "");
       const action = input["action"] === "reject" ? "reject" : "greenlight";
       if (!opportunityId) return { error: "opportunityId required" };
@@ -324,17 +335,21 @@ const dispatchTool = async (
       return { url: m.url, action, opportunityId, ttlSeconds: Number(process.env.MAGIC_LINK_TTL_SECONDS ?? 900) };
     }
     case "search_text": {
+      // In demo mode, downgrade to skills-only (the other sources need DB).
+      const sourcesRaw = Array.isArray(input["sources"])
+        ? (input["sources"] as string[]).filter((s): s is "opportunities" | "reflections" | "skills" =>
+            s === "opportunities" || s === "reflections" || s === "skills"
+          )
+        : ["opportunities" as const, "reflections" as const, "skills" as const];
+      const sources = isDbReady() ? sourcesRaw : (sourcesRaw.includes("skills") ? ["skills" as const] : []);
       return await searchText({
         query: String(input["query"] ?? "").trim(),
-        sources: Array.isArray(input["sources"])
-          ? (input["sources"] as string[]).filter((s): s is "opportunities" | "reflections" | "skills" =>
-              s === "opportunities" || s === "reflections" || s === "skills"
-            )
-          : ["opportunities", "reflections", "skills"],
+        sources,
         limit: Math.max(1, Math.min(25, Number(input["limit"] ?? 8))),
       });
     }
     case "summarize_inbox": {
+      if (!isDbReady()) return dbUnavailable("summarize_inbox");
       return await summarizeInbox();
     }
     default:
@@ -349,9 +364,9 @@ type SearchHit = { source: string; id: string; title: string; snippet: string; s
 
 const searchText = async (args: {
   query: string;
-  sources: Array<"opportunities" | "reflections" | "skills">;
+  sources: ReadonlyArray<"opportunities" | "reflections" | "skills">;
   limit: number;
-}): Promise<{ hits: SearchHit[]; query: string; sources: string[] }> => {
+}): Promise<{ hits: SearchHit[]; query: string; sources: ReadonlyArray<string> }> => {
   if (!args.query) return { hits: [], query: args.query, sources: args.sources };
   const terms = args.query
     .toLowerCase()

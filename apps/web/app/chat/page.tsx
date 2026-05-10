@@ -18,8 +18,16 @@ type ToolEvent = {
 
 type Conversation = { id: string; title: string; updatedAt: string };
 
+type Health = {
+  demo: boolean;
+  ready: { db: boolean; auth: boolean; llm: boolean };
+  llm: { provider: "anthropic" | "openrouter" | "none"; modelId: string | null };
+};
+
 export default function ChatPage() {
   const [token, setToken] = useState<string>("");
+  const [health, setHealth] = useState<Health | null>(null);
+  const [demoHistory, setDemoHistory] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -34,12 +42,18 @@ export default function ChatPage() {
   useEffect(() => {
     const t = typeof window !== "undefined" ? localStorage.getItem("operatorJwt") : null;
     if (t) setToken(t);
+    void (async () => {
+      try {
+        const r = await fetch("/api/health");
+        if (r.ok) setHealth((await r.json()) as Health);
+      } catch {/* ignore */}
+    })();
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || health?.demo) return;
     void refreshConversations();
-  }, [token]);
+  }, [token, health?.demo]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -93,7 +107,9 @@ export default function ChatPage() {
   };
 
   const send = async (): Promise<void> => {
-    if (!activeId || !draft.trim() || streaming) return;
+    const isDemo = !!health?.demo;
+    if (!isDemo && !activeId) return;
+    if (!draft.trim() || streaming) return;
     const message = draft.trim();
     setDraft("");
     setStreaming(true);
@@ -106,12 +122,19 @@ export default function ChatPage() {
     abortRef.current = ac;
 
     try {
-      const r = await fetch("/api/chat/send", {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({ conversationId: activeId, message }),
-        signal: ac.signal,
-      });
+      const r = isDemo
+        ? await fetch("/api/chat/quick", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ message, history: demoHistory }),
+            signal: ac.signal,
+          })
+        : await fetch("/api/chat/send", {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({ conversationId: activeId, message }),
+            signal: ac.signal,
+          });
       if (!r.ok || !r.body) {
         if (r.status === 429) {
           setMessages((m) => [...m, { id: `local-err-${Date.now()}`, role: "assistant", content: "_(rate limited — slow down a moment)_" }]);
@@ -155,7 +178,14 @@ export default function ChatPage() {
           } catch {/* ignore parse errors on partial frames */}
         }
       }
-      if (assistant) setMessages((m) => [...m, { id: `local-asst-${Date.now()}`, role: "assistant", content: assistant }]);
+      if (assistant) {
+        setMessages((m) => [...m, { id: `local-asst-${Date.now()}`, role: "assistant", content: assistant }]);
+        if (isDemo) setDemoHistory((h) => [
+          ...h,
+          { role: "user" as const, content: message },
+          { role: "assistant" as const, content: assistant },
+        ].slice(-20));
+      }
       setStreamBuf("");
     } catch (err) {
       if ((err as Error).name === "AbortError") {
@@ -170,6 +200,24 @@ export default function ChatPage() {
   const toggleTool = (i: number): void => {
     setToolEvents((cur) => cur.map((t, idx) => (idx === i ? { ...t, expanded: !t.expanded } : t)));
   };
+
+  // Demo mode: skip JWT entry; chat works directly against /api/chat/quick.
+  if (health?.demo) {
+    return renderDemoChat({
+      health,
+      messages,
+      streaming,
+      streamBuf,
+      toolEvents,
+      tokensLastTurn,
+      draft,
+      scrollRef,
+      setDraft,
+      send,
+      stop,
+      toggleTool,
+    });
+  }
 
   if (!token) {
     return (
@@ -315,6 +363,116 @@ export default function ChatPage() {
     </>
   );
 }
+
+type DemoChatProps = {
+  health: Health;
+  messages: Message[];
+  streaming: boolean;
+  streamBuf: string;
+  toolEvents: ToolEvent[];
+  tokensLastTurn: { in: number; out: number; cents: string } | null;
+  draft: string;
+  scrollRef: React.RefObject<HTMLDivElement>;
+  setDraft: (v: string) => void;
+  send: () => Promise<void>;
+  stop: () => void;
+  toggleTool: (i: number) => void;
+};
+
+const renderDemoChat = (p: DemoChatProps): React.JSX.Element => {
+  const banner = !p.health.ready.llm
+    ? { color: "var(--red)", text: "no LLM key set on this deploy — chat will 500. Set OPENROUTER_API_KEY or ANTHROPIC_API_KEY in Vercel project env." }
+    : { color: "var(--amber)", text: `demo mode (no DB) · provider: ${p.health.llm.provider} · DB-touching tools return a friendly degraded message.` };
+
+  return (
+    <>
+      <div className="head">
+        <h1>/chat</h1>
+        <div className="meta">
+          {p.health.llm.provider} · {p.health.llm.modelId ?? "no model"}
+          {p.tokensLastTurn && (
+            <span style={{ marginLeft: 12 }}>
+              · last turn: {p.tokensLastTurn.in} in · {p.tokensLastTurn.out} out · ${(Number(p.tokensLastTurn.cents) / 100).toFixed(3)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="card" style={{ borderLeft: `2px solid ${banner.color}` }}>
+        <span className="tag" style={{ color: banner.color }}>{p.health.ready.llm ? "demo" : "no key"}</span>
+        <span style={{ marginLeft: 8 }}>{banner.text}</span>
+      </div>
+
+      <div ref={p.scrollRef} style={{ maxHeight: "60vh", overflowY: "auto", marginBottom: 12, padding: 12, background: "var(--bg-1)", border: "1px solid var(--line)", borderRadius: 4 }}>
+        {p.messages.length === 0 && (
+          <div className="empty">type a message to start.</div>
+        )}
+        {p.messages.map((m) => (
+          <div key={m.id} style={{ marginBottom: 12 }}>
+            <span className={`tag ${m.role === "user" ? "cyan" : m.role === "assistant" ? "green" : ""}`}>{m.role}</span>
+            {m.role === "assistant" ? (
+              <div className="md" style={{ marginTop: 6, color: "var(--fg)" }} dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }} />
+            ) : (
+              <div style={{ marginTop: 4, whiteSpace: "pre-wrap", color: "var(--fg)" }}>{m.content}</div>
+            )}
+          </div>
+        ))}
+        {p.streaming && p.streamBuf && (
+          <div>
+            <span className="tag green">assistant</span>
+            <div className="md" style={{ marginTop: 6, color: "var(--fg)" }} dangerouslySetInnerHTML={{ __html: renderMarkdown(p.streamBuf) }} />
+          </div>
+        )}
+        {p.streaming && !p.streamBuf && p.toolEvents.length === 0 && (
+          <div style={{ marginTop: 6, color: "var(--fg-muted)", fontSize: 12 }}>thinking…</div>
+        )}
+        {p.toolEvents.length > 0 && (
+          <div style={{ marginTop: 12, borderTop: "1px dashed var(--line-1)", paddingTop: 8 }}>
+            {p.toolEvents.map((t, i) => (
+              <div key={i} style={{ fontSize: 11, marginBottom: 4 }}>
+                <span style={{ cursor: "pointer", color: "var(--fg-muted)" }} onClick={() => p.toggleTool(i)}>
+                  <span className="tag amber">tool</span> {t.name}{" "}
+                  <span style={{ color: "var(--fg-faint)" }}>{t.expanded ? "▾" : "▸"}</span>
+                  {typeof t.output !== "undefined" && (
+                    <span style={{ marginLeft: 6, color: "var(--fg-dim)" }}>→ {summariseOutput(t.output)}</span>
+                  )}
+                </span>
+                {t.expanded && (
+                  <div style={{ marginTop: 4, marginLeft: 24 }}>
+                    <pre style={{ fontSize: 10, color: "var(--fg-dim)", padding: 6, background: "var(--bg-2)", overflowX: "auto" }}>input: {JSON.stringify(t.input, null, 2)}</pre>
+                    {typeof t.output !== "undefined" && (
+                      <pre style={{ fontSize: 10, color: "var(--fg-dim)", padding: 6, background: "var(--bg-2)", overflowX: "auto" }}>output: {JSON.stringify(t.output, null, 2).slice(0, 4000)}</pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <textarea
+          value={p.draft}
+          onChange={(e) => p.setDraft(e.target.value)}
+          placeholder="ask anything about the autoresearcher, the skills, the prompt bank, or how the system works…"
+          rows={3}
+          disabled={p.streaming}
+          style={{ flex: 1, padding: 8, background: "var(--bg-2)", color: "var(--fg)", border: "1px solid var(--line-1)", fontFamily: "var(--mono)", fontSize: 12, resize: "vertical" }}
+          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void p.send(); }}
+        />
+        {p.streaming ? (
+          <button className="danger" onClick={p.stop}>stop</button>
+        ) : (
+          <button className="primary" disabled={!p.draft.trim()} onClick={() => void p.send()}>send</button>
+        )}
+      </div>
+      <div style={{ fontSize: 10, color: "var(--fg-faint)", marginTop: 4 }}>
+        cmd/ctrl+enter to send · demo mode is rate-limited (4 burst, 1 per 6s) · history kept in browser, not persisted
+      </div>
+    </>
+  );
+};
 
 const summariseOutput = (output: unknown): string => {
   if (Array.isArray(output)) return `${output.length} item(s)`;
