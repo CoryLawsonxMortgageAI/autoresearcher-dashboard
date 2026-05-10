@@ -16,13 +16,21 @@ healthRouter.get("/", (c) => {
   const llm = detectLlmProvider();
   const dbReady = !!process.env.DATABASE_URL;
   const authReady = !!process.env.JWT_SIGNING_KEY;
-  const demo = !dbReady; // Chat /quick is enabled; persistence is off.
+  const demo = !dbReady;
+  // Diagnostic: enumerate the env-var KEYS (not values) the function can
+  // actually read at runtime, scoped to a tiny prefix-allowlist. Helps the
+  // operator confirm whether their Vercel env binding is reaching the
+  // function. Never returns values.
+  const envKeysSeen = Object.keys(process.env)
+    .filter((k) => /^(OPENROUTER|ANTHROPIC|DATABASE|JWT|PUSHER|RESEND|SENTRY|NOTION|VERCEL_)/.test(k))
+    .sort();
   return c.json({
     status: pusher.healthy ? "ok" : "degraded",
     pusher,
     llm,
     ready: { db: dbReady, auth: authReady, llm: llm.provider !== "none" },
     demo,
+    envKeysSeen,
     time: new Date().toISOString(),
     env: process.env.SENTRY_ENVIRONMENT ?? "development",
   });
