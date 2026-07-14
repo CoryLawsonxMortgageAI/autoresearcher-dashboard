@@ -26,7 +26,7 @@
     "@types/node-cron": "^3.0.11",
     "tsx": "^4.19.0",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.5"
+    "vitest": "^3.2.6"
   },
   "dependencies": {
     "@autoresearcher/db": "workspace:*",
@@ -38,10 +38,10 @@
     "@hono/zod-validator": "^0.4.0",
     "@sentry/node": "^8.30.0",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/sdk-node": "^0.53.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.50.0",
-    "drizzle-orm": "^0.33.0",
-    "hono": "^4.6.0",
+    "@opentelemetry/sdk-node": "^0.217.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.78.0",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.25",
     "pusher": "^5.2.0",
     "resend": "^4.0.0",
     "jose": "^5.9.0",
